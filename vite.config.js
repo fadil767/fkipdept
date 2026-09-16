@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   base: './',
+  envPrefix: ['VITE_', 'SUPABASE_'],
   server: {
     host: true,
     port: 5173,

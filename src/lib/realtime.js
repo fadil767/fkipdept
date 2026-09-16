@@ -9,11 +9,15 @@ const getStoredConfig = (key) => {
 };
 
 const SUPABASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL)) ||
   getStoredConfig("ut_supabase_url") ||
   "";
 const SUPABASE_ANON_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY)) ||
   getStoredConfig("ut_supabase_anon_key") ||
   "";
 
