@@ -7,6 +7,7 @@ import { createCatalogFeatures } from "./features/CatalogFeatures.jsx";
 import { createDirectoryFeatures } from "./features/DirectoryFeatures.jsx";
 import { createPlottingComponent } from "./features/Plotting.jsx";
 import AccessibilityWidget from "./features/AccessibilityWidget.jsx";
+import SwitchAccountModal, { saveRecentAccount } from "./features/SwitchAccountModal.jsx";
 import {
   LECTURER_CLASS_LIMIT,
   buildAutoPilotPlotting,
@@ -1866,6 +1867,9 @@ function TopNavigation({
   active,
   setActive,
   onLogout,
+  onOpenSwitchAccount,
+  onQuickSwitchToDemo,
+  onQuickSwitchToCloud,
   pendingCount = 0,
   terms = [],
   selectedTermCode,
@@ -2072,22 +2076,94 @@ function TopNavigation({
                   className="fixed inset-0 z-40"
                   onClick={() => setUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10 backdrop-blur-md">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Masuk Sebagai</p>
-                    <p className="mt-0.5 text-xs font-bold text-[#102f52] truncate" title={userEmail}>
+                <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-md">
+                  {/* Profil Aktif Card */}
+                  <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Akun Aktif</p>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+                        isDemoSession ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isDemoSession ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                        {isDemoSession ? "Demo Lokal" : "Cloud Supabase"}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-[#102f52] truncate" title={userEmail}>
                       {userEmail || "Administrator"}
                     </p>
                     <p className="text-[11px] text-slate-500 font-medium">Administrator Program Studi</p>
                   </div>
-                  <div className="p-1">
+
+                  {/* Quick Switch Section */}
+                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                    <p className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Beralih Akun (Switch)
+                    </p>
+
+                    {isDemoSession ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onQuickSwitchToCloud?.();
+                        }}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-[#005baa] group-hover:bg-[#005baa] group-hover:text-white transition-colors shrink-0">
+                            <Icons.cloud className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold truncate text-[#102f52] group-hover:text-[#005baa]">admin.fkip@ecampus.ut.ac.id</p>
+                            <p className="text-[10px] text-slate-400 font-normal">Beralih ke Cloud Supabase</p>
+                          </div>
+                        </div>
+                        <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#005baa] shrink-0" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onQuickSwitchToDemo?.();
+                        }}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-amber-50 hover:text-amber-900 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
+                            <Icons.users className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold truncate text-[#102f52] group-hover:text-amber-900">demo@fkip.ut.ac.id</p>
+                            <p className="text-[10px] text-slate-400 font-normal">Beralih ke Demo Lokal</p>
+                          </div>
+                        </div>
+                        <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-amber-800 shrink-0" />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onOpenSwitchAccount?.();
+                      }}
+                      className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-[#005baa] transition-colors cursor-pointer"
+                    >
+                      <Icons.swap className="h-4 w-4 text-[#005baa]" />
+                      <span>Kelola & Tambah Akun...</span>
+                    </button>
+                  </div>
+
+                  {/* Footer Logout */}
+                  <div className="mt-2 pt-2 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => {
                         setUserMenuOpen(false);
                         onLogout();
                       }}
-                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       <Icons.logout className="h-4 w-4 text-rose-600" />
                       <span>Keluar (Logout)</span>
@@ -2165,25 +2241,47 @@ function TopNavigation({
               <span>Mode Offline: Data tersimpan di perangkat ini</span>
             </div>
           )}
-          {/* User Profile & Logout in Mobile Drawer */}
-          <div className="mt-3 flex items-center justify-between border-t border-slate-200/80 pt-3">
-            <div className="flex items-center gap-2 truncate text-xs font-semibold text-slate-700">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#005baa] text-[11px] font-bold text-white uppercase shrink-0">
-                {userEmail?.[0] || "A"}
+          {/* User Profile & Actions in Mobile Drawer */}
+          <div className="mt-3 border-t border-slate-200/80 pt-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 truncate text-xs font-semibold text-slate-700">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#005baa] text-[11px] font-bold text-white uppercase shrink-0">
+                  {userEmail?.[0] || "A"}
+                </div>
+                <div className="truncate">
+                  <span className="truncate block font-bold max-w-[150px] sm:max-w-[200px]">{userEmail || "Admin"}</span>
+                  <span className="text-[10px] text-slate-400">{isDemoSession ? "Mode Demo (Lokal)" : "Cloud Supabase"}</span>
+                </div>
               </div>
-              <span className="truncate max-w-[160px] sm:max-w-[240px]">{userEmail || "Admin"}</span>
+              <span className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold ${isDemoSession ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+                {isDemoSession ? "Demo" : "Cloud"}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onLogout();
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 cursor-pointer"
-            >
-              <Icons.logout className="h-3.5 w-3.5 text-rose-600" />
-              <span>Keluar (Logout)</span>
-            </button>
+
+            <div className="flex items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenSwitchAccount?.();
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-[#005baa] hover:bg-blue-100 active:scale-95 cursor-pointer"
+              >
+                <Icons.swap className="h-3.5 w-3.5" />
+                <span>Beralih Akun</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onLogout();
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 cursor-pointer"
+              >
+                <Icons.logout className="h-3.5 w-3.5 text-rose-600" />
+                <span>Keluar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2740,6 +2838,7 @@ export default function App() {
     status: "CONNECTING",
     mode: IS_SUPABASE_CONFIGURED ? "cloud" : "local",
   });
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
   const prevOnlineRef = useRef(isOnline);
 
   useEffect(() => {
@@ -3567,6 +3666,12 @@ export default function App() {
     } catch (err) {
       void err;
     }
+    saveRecentAccount({
+      email,
+      name: email.split("@")[0] || "Administrator",
+      role: "Administrator Program Studi (Cloud)",
+      type: "cloud",
+    });
     syncBaselineRef.current = null;
     syncConflictRef.current = false;
     syncRevisionRef.current = 0;
@@ -3582,6 +3687,12 @@ export default function App() {
     } catch (err) {
       void err;
     }
+    saveRecentAccount({
+      email: DEMO_ACCOUNT.email,
+      name: "Admin Demo",
+      role: "Administrator Program Studi (Lokal)",
+      type: "demo",
+    });
     syncBaselineRef.current = null;
     syncConflictRef.current = false;
     syncRevisionRef.current = 0;
@@ -3593,6 +3704,39 @@ export default function App() {
       entryMode: "admin",
       isDemo: true,
     });
+  };
+
+  const handleSwitchToDemo = () => {
+    handleDemoLogin();
+    setRealtimeToast({
+      message: "Berhasil beralih ke Akun Demo (demo@fkip.ut.ac.id)",
+      type: "info",
+    });
+  };
+
+  const handleSwitchToCloud = async (email, password) => {
+    const loggedInEmail = await signIn(email, password);
+    handleLogin(loggedInEmail);
+    setRealtimeToast({
+      message: `Berhasil beralih ke Akun Cloud (${loggedInEmail})`,
+      type: "success",
+    });
+  };
+
+  const handleQuickSwitchToCloud = async () => {
+    try {
+      const raw = localStorage.getItem("ut_saved_login_credentials_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.email && parsed?.password) {
+          await handleSwitchToCloud(parsed.email, parsed.password);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Auto-switch to cloud failed, opening modal:", err);
+    }
+    setShowSwitchModal(true);
   };
 
   const handleLogout = () => {
@@ -4295,6 +4439,9 @@ export default function App() {
         active={active}
         setActive={setActive}
         onLogout={handleLogout}
+        onOpenSwitchAccount={() => setShowSwitchModal(true)}
+        onQuickSwitchToDemo={handleSwitchToDemo}
+        onQuickSwitchToCloud={handleQuickSwitchToCloud}
         pendingCount={submissions.filter((s) => s.status === "pending").length}
         terms={terms}
         selectedTermCode={effectiveSelectedTermCode}
@@ -4382,6 +4529,21 @@ export default function App() {
         onClose={() => setShowInstallModal(false)}
         onDirectInstall={promptInstall}
         hasPrompt={isInstallable}
+      />
+
+      {/* Switch Account Modal */}
+      <SwitchAccountModal
+        isOpen={showSwitchModal}
+        onClose={() => setShowSwitchModal(false)}
+        currentUserEmail={userEmail}
+        isDemoSession={isDemoSession}
+        demoAccount={DEMO_ACCOUNT}
+        onSwitchToDemo={handleSwitchToDemo}
+        onSwitchToCloud={handleSwitchToCloud}
+        onLogoutAndLoginMode={() => {
+          handleLogout();
+          setEntryMode("login");
+        }}
       />
 
       {/* Floating Accessibility Widget & Global Keyboard Shortcuts */}
