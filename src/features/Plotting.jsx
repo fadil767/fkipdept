@@ -1894,7 +1894,157 @@ export function createPlottingComponent(deps) {
                 })}
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Mobile Candidate Lecturer Cards (< sm) */}
+              <div className="block sm:hidden divide-y divide-[#edf3f1]">
+                {visibleLecturers.map((lecturer) => {
+                  const selected = selectedLecturerId === lecturer.id;
+                  const plottedCount = lecturer.plotted.length;
+                  const avail = Math.max(0, Number(lecturer.available ?? 0));
+                  const limit =
+                    typeof getLecturerRatingClassLimit === "function"
+                      ? getLecturerRatingClassLimit(lecturer)
+                      : 3;
+                  const totalCap = Math.max(plottedCount + avail, limit);
+                  const pct =
+                    totalCap > 0
+                      ? Math.min(100, Math.round((plottedCount / totalCap) * 100))
+                      : 0;
+                  const isOverloaded = plottedCount > limit;
+                  const isOptimal =
+                    !isOverloaded && (avail === 0 || plottedCount >= limit);
+
+                  return (
+                    <div
+                      key={lecturer.id}
+                      className={`p-4 transition-colors ${
+                        selected ? "bg-[#fbfdf8]" : "bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#005baa] to-[#003870] text-sm font-bold text-white shadow-2xs">
+                            {lecturer.name
+                              ? lecturer.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .slice(0, 2)
+                                  .join("")
+                                  .toUpperCase()
+                              : "DS"}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-sm font-bold text-[#102F52]">
+                                {lecturer.name}
+                              </h4>
+                              {lecturer.degree && (
+                                <Badge tone="slate">{lecturer.degree}</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#61717b] font-mono mt-0.5">
+                              ID: {lecturer.id}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Workload / Capacity Progress */}
+                      <div className="mt-3 rounded-xl bg-[#f8fbfa] p-3 border border-[#edf3f1]">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="font-bold text-[#102F52]">
+                            Beban:{" "}
+                            <span className="font-extrabold text-[#005baa]">
+                              {plottedCount}
+                            </span>
+                            <span className="font-normal text-[#6d7d86]">
+                              {" "}
+                              / {totalCap} Kelas
+                            </span>
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              isOverloaded
+                                ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                : isOptimal
+                                ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                isOverloaded
+                                  ? "bg-rose-600"
+                                  : isOptimal
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-600"
+                              }`}
+                            />
+                            {isOverloaded
+                              ? "Overload"
+                              : isOptimal
+                              ? "Penuh / Optimal"
+                              : `${avail} Slot Bebas`}
+                          </span>
+                        </div>
+                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isOverloaded
+                                ? "bg-gradient-to-r from-rose-500 to-red-600"
+                                : isOptimal
+                                ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                                : "bg-gradient-to-r from-emerald-500 to-teal-500"
+                            }`}
+                            style={{ width: `${Math.max(6, pct)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Expertise & Plotted courses */}
+                      {((lecturer.expertise && lecturer.expertise.length > 0) ||
+                        (lecturer.plotted && lecturer.plotted.length > 0)) && (
+                        <div className="mt-2.5 space-y-1.5 text-xs">
+                          {lecturer.expertise && lecturer.expertise.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] font-semibold text-[#6d7d86] uppercase tracking-wider">
+                                Keahlian:
+                              </span>
+                              {lecturer.expertise.map((item) => (
+                                <Badge key={item}>{item}</Badge>
+                              ))}
+                            </div>
+                          )}
+                          {lecturer.plotted && lecturer.plotted.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] font-semibold text-[#6d7d86] uppercase tracking-wider">
+                                Terplot:
+                              </span>
+                              <PlottedCourseBadges
+                                plotted={lecturer.plotted}
+                                courses={courses}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Button */}
+                      <div className="mt-3 pt-2.5 border-t border-[#edf3f1]">
+                        <Button
+                          variant="secondary"
+                          className="w-full justify-center min-h-[42px] font-semibold text-[#005baa] border-blue-200 hover:bg-blue-50"
+                          onClick={() => setSelectedLecturerId(lecturer.id)}
+                        >
+                          Alokasikan Kelas
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Candidate Lecturer Table (>= sm) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full min-w-[980px] text-left text-sm">
                   <thead className="bg-[#f7fbf6] text-[10px] uppercase tracking-[0.15em] text-[#6d7d86]">
                     <tr>
@@ -2084,58 +2234,62 @@ export function createPlottingComponent(deps) {
                       return (
                         <div
                           key={`${selectedLecturer.id}-${course.code}`}
-                          className={`grid items-center gap-3 rounded-xl border border-[#dce9e6] bg-[#fffffb] p-3 ${count ? "grid-cols-[1fr_auto_76px]" : "grid-cols-[1fr_76px]"}`}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#dce9e6] bg-[#fffffb] p-3 shadow-2xs"
                         >
-                          <span>
-                            <span className="block text-sm font-normal text-[#26353f]">
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium text-[#26353f] line-clamp-2">
                               {course.title}
                             </span>
                             <span className="mt-1 block text-xs font-normal text-[#61717b]">
                               {course.code} · {assigned} / {planned} teralokasi
                             </span>
-                          </span>
-                          {count > 0 && (
-                            <Button
-                              variant="ghost"
-                              className="px-2.5"
-                              onClick={() =>
-                                openClassSwap(
-                                  selectedLecturer.id,
-                                  course.code,
-                                )
-                              }
-                              disabled={!selectedLecturerHasSwapTarget}
-                              title={
-                                selectedLecturerHasSwapTarget
-                                  ? `Tukar ${course.title} dengan kelas dosen lain`
-                                  : "Tidak ada dosen lain dengan kelas teralokasi untuk ditukar."
-                              }
-                            >
-                              <Icons.swap className="h-4 w-4" />
-                              Tukar
-                            </Button>
-                          )}
-                          <input
-                            type="number"
-                            min="0"
-                            max={maxCountForCourse}
-                            value={count}
-                            onChange={(event) =>
-                              setLecturerCourseCount(
-                                course.code,
-                                event.target.value,
-                                selectedLecturer.id,
-                              )
-                            }
-                            className="w-full rounded-lg border border-[#dce9e6] bg-[#fffffb] px-2 py-2 text-sm font-normal text-[#26353f] outline-none focus:border-[#9bbfe8] disabled:opacity-50"
-                            title={
-                              maxCountForCourse === 0
-                                ? `Dosen ini telah mencapai batas ${lecturerLimit} kelas sesuai penilaiannya.`
-                                : undefined
-                            }
-                            disabled={maxCountForCourse === 0}
-                            aria-label={`Kelas dialokasikan untuk ${selectedLecturer.name} pada ${course.title}`}
-                          />
+                          </div>
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                            {count > 0 && (
+                              <Button
+                                variant="ghost"
+                                className="px-2.5 min-h-[38px]"
+                                onClick={() =>
+                                  openClassSwap(
+                                    selectedLecturer.id,
+                                    course.code,
+                                  )
+                                }
+                                disabled={!selectedLecturerHasSwapTarget}
+                                title={
+                                  selectedLecturerHasSwapTarget
+                                    ? `Tukar ${course.title} dengan kelas dosen lain`
+                                    : "Tidak ada dosen lain dengan kelas teralokasi untuk ditukar."
+                                }
+                              >
+                                <Icons.swap className="h-4 w-4 mr-1" />
+                                Tukar
+                              </Button>
+                            )}
+                            <div className="w-20">
+                              <input
+                                type="number"
+                                min="0"
+                                max={maxCountForCourse}
+                                value={count}
+                                onChange={(event) =>
+                                  setLecturerCourseCount(
+                                    course.code,
+                                    event.target.value,
+                                    selectedLecturer.id,
+                                  )
+                                }
+                                className="w-full rounded-lg border border-[#dce9e6] bg-[#fffffb] px-2 py-2 text-center text-sm font-bold text-[#26353f] outline-none focus:border-[#9bbfe8] disabled:opacity-50"
+                                title={
+                                  maxCountForCourse === 0
+                                    ? `Dosen ini telah mencapai batas ${lecturerLimit} kelas sesuai penilaiannya.`
+                                    : undefined
+                                }
+                                disabled={maxCountForCourse === 0}
+                                aria-label={`Kelas dialokasikan untuk ${selectedLecturer.name} pada ${course.title}`}
+                              />
+                            </div>
+                          </div>
                         </div>
                       );
                     })}

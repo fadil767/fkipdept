@@ -129,7 +129,7 @@ export default function AccessibilityWidget({ onNavigate, activeTab }) {
   return (
     <>
       {/* Floating Accessibility Trigger Button (Bottom-Left) */}
-      <div className="fixed bottom-5 left-5 z-40 flex items-center gap-2">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-5 left-3 sm:left-5 z-40 flex items-center gap-2">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}

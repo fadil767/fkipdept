@@ -175,7 +175,7 @@ export function createCatalogFeatures(deps) {
                     type="button"
                     onClick={() => setModal(course)}
                     title="Edit mata kuliah"
-                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Icons.edit className="h-4 w-4" />
                   </button>
@@ -183,7 +183,7 @@ export function createCatalogFeatures(deps) {
                     type="button"
                     onClick={() => setDeleteTarget(course)}
                     title="Hapus mata kuliah"
-                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
+                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Icons.trash className="h-4 w-4" />
                   </button>
@@ -395,7 +395,7 @@ export function createCatalogFeatures(deps) {
                     type="button"
                     onClick={() => setModal(term)}
                     title="Edit semester"
-                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Icons.edit className="h-4 w-4" />
                   </button>
@@ -403,7 +403,7 @@ export function createCatalogFeatures(deps) {
                     type="button"
                     onClick={() => setDeleteTarget(term)}
                     title="Hapus semester"
-                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
+                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Icons.trash className="h-4 w-4" />
                   </button>
