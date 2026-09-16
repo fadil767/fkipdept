@@ -1,0 +1,163 @@
+# Walkthrough: Task 1 - Initialize Project & Database Schema
+
+As Principal Full-Stack Developer, **Task 1** is complete. We have initialized a production-grade, enterprise-ready Learning Management System (LMS) codebase with Next.js 15+ (App Router), TypeScript, Tailwind CSS, Shadcn UI patterns, and Supabase PostgreSQL with complete Row Level Security (RLS).
+
+---
+
+## 1. Directory & App Architecture
+
+The project has been initialized in:
+`C:\Users\Fadil\.gemini\antigravity-ide\scratch\custom-lms`
+
+> [!TIP]
+> **Recommended Action**: Open `C:\Users\Fadil\.gemini\antigravity-ide\scratch\custom-lms` as your active IDE workspace to get full TypeScript autocomplete, linting, and schema intellisense.
+
+### Key Directories & Files
+
+```
+custom-lms/
+├── prisma/
+│   └── schema.prisma                           # Dual ORM support: Complete Prisma schema mapping
+├── supabase/
+│   ├── migrations/
+│   │   └── 20260912000000_init_lms_schema.sql  # Production PostgreSQL DDL, RLS, & Triggers
+│   └── seed.sql                                # Seed script with demo admin, teacher, student, courses
+├── src/
+│   ├── app/
+│   │   ├── (auth)/                             # Role-aware login, registration, & OAuth callback
+│   │   │   ├── login/page.tsx
+│   │   │   ├── register/page.tsx
+│   │   │   └── auth/callback/route.ts
+│   │   ├── (dashboard)/                        # Protected authenticated dashboard shell
+│   │   │   ├── layout.tsx                      # Dashboard shell with Navbar & Sidebar
+│   │   │   ├── admin/page.tsx                  # Superadmin panel (platform analytics, user roles)
+│   │   │   ├── teacher/page.tsx                # Instructor studio (curriculum manager, courses table)
+│   │   │   └── student/page.tsx                # Student portal (enrolled courses, progress meters)
+│   │   ├── (marketing)/                        # Public catalog & course details
+│   │   │   ├── layout.tsx
+│   │   │   └── courses/
+│   │   │       ├── page.tsx                    # Searchable course catalog
+│   │   │       └── [slug]/page.tsx             # Course syllabus breakdown & enrollment card
+│   │   ├── courses/
+│   │   │   └── [slug]/learn/[lessonId]/page.tsx# Distraction-free video player & syllabus drawer
+│   │   ├── layout.tsx                          # Root HTML layout with Geist font tokens
+│   │   ├── globals.css                         # Tailwind CSS design system & glassmorphism variables
+│   │   └── page.tsx                            # Modern LMS hero landing page & course showcase
+│   ├── components/
+│   │   ├── ui/                                 # Shadcn UI primitives (button, card, badge, progress)
+│   │   ├── common/                             # Responsive Navbar & Sidebar components
+│   │   └── course/                             # CourseCard & CourseProgress widgets
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── client.ts                       # Browser client (@supabase/ssr)
+│   │   │   ├── server.ts                       # Server Component & Server Action client
+│   │   │   └── middleware.ts                   # Session refresher & RBAC route guard
+│   │   └── utils.ts                            # cn() styling & currency/duration formatters
+│   ├── types/
+│   │   ├── database.types.ts                   # Generated Supabase Database TypeScript definitions
+│   │   └── lms.ts                              # Domain models, joined types, & view models
+│   └── middleware.ts                           # Root edge middleware protecting dashboard routes
+├── components.json                             # Shadcn UI CLI configuration
+├── .env.example                                # Supabase connection variables template
+└── .env.local                                  # Local development credentials
+```
+
+---
+
+## 2. Comprehensive Database Schema Plan
+
+We created both a native **Supabase PostgreSQL migration script** and an equivalent **Prisma ORM schema**.
+
+### A. Supabase PostgreSQL Migration (`supabase/migrations/20260912000000_init_lms_schema.sql`)
+- [20260912000000_init_lms_schema.sql](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/supabase/migrations/20260912000000_init_lms_schema.sql)
+
+#### PostgreSQL Custom Enums
+```sql
+CREATE TYPE public.user_role AS ENUM ('admin', 'teacher', 'student');
+CREATE TYPE public.course_status AS ENUM ('draft', 'published', 'archived');
+CREATE TYPE public.enrollment_status AS ENUM ('active', 'completed', 'dropped');
+CREATE TYPE public.lesson_type AS ENUM ('video', 'text', 'quiz');
+```
+
+#### Core Entities
+1. **`profiles`**: Linked 1:1 with `auth.users(id)` via `ON DELETE CASCADE`. Stores `role`, `full_name`, `avatar_url`, and `bio`.
+2. **`courses`**: Foreign key to instructor `profiles(id)` (`ON DELETE RESTRICT` to prevent accidental orphaned courses). Includes `slug` (unique), `price`, `status`, `thumbnail_url`.
+3. **`modules`**: Sections within a course. Unique constraint on `(course_id, order_index)`.
+4. **`lessons`**: Units within a module. Supports `video_url`, `content` (Markdown/HTML), `duration_seconds`, `is_free_preview`, and unique constraint on `(module_id, order_index)`.
+5. **`enrollments`**: Connects `student_id` to `course_id` with composite unique constraint. Tracks `progress_percentage` and `completed_at`.
+6. **`lesson_progress`**: Tracks per-student lesson completion and `last_watched_second` for playback resume.
+
+#### Automated Triggers
+- **`handle_new_user()`**: Automatically inserts a row into `public.profiles` whenever an identity signs up in `auth.users`, preserving role metadata.
+- **`recalculate_course_progress()`**: Fires whenever a student marks a lesson completed. Automatically queries total course lessons, counts student completions, updates `enrollments.progress_percentage`, and marks `enrollments.completed_at` if 100%.
+- **`handle_updated_at()`**: Keeps `updated_at` timestamps accurate across all tables.
+
+#### Row Level Security (RLS)
+- Helper security functions: `is_admin()`, `is_teacher()`, `is_enrolled(course_id)`
+- Strict SELECT/INSERT/UPDATE/DELETE policies ensuring students cannot modify courses or view un-enrolled private lessons, teachers can only edit their own courses, and admins retain global governance.
+
+### B. Prisma ORM Schema (`prisma/schema.prisma`)
+- [schema.prisma](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/prisma/schema.prisma)
+- Full Prisma mapping with `@map`, `@@map`, relations, composite unique indexes, and PostgreSQL enums for developers who prefer Prisma Client or Prisma Studio.
+
+### C. Seed Script (`supabase/seed.sql`)
+- [seed.sql](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/supabase/seed.sql)
+- Includes demo admin, teacher (Sarah Connor), student (John Doe), published and draft courses with curriculum, sample enrollments, and lesson progress.
+
+---
+
+## 3. Route Guard & RBAC Architecture
+
+The Edge middleware in [src/middleware.ts](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/middleware.ts) and [src/lib/supabase/middleware.ts](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/lib/supabase/middleware.ts) refreshes Supabase cookies and protects dashboard routes:
+- Unauthenticated requests to `/student`, `/teacher`, or `/admin` are intercepted and redirected with HTTP 307 to `/login?redirectTo=<targetPath>`.
+- Authenticated requests to `/login` or `/register` are automatically forwarded into the portal.
+
+---
+
+## 4. Verification & Testing
+
+### A. Next.js Build Verification
+`npm run build` completed successfully:
+```
+▲ Next.js 16.3.5 (Turbopack)
+✓ Compiled successfully in 1600ms
+  Finished TypeScript in 5.4s ...
+✓ Generating static pages using 3 workers (11/11) in 833ms
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ƒ /auth/callback
+├ ○ /courses
+├ ƒ /courses/[slug]
+├ ƒ /courses/[slug]/learn/[lessonId]
+├ ○ /login
+├ ○ /register
+├ ○ /student
+└ ○ /teacher
+```
+
+### B. HTTP Route Status Verification
+All routes were tested against the production server:
+
+| Route | HTTP Status | Description |
+|---|---|---|
+| `http://localhost:3000/` | **200 OK** | Landing page with Hero, Features, & Course Cards |
+| `http://localhost:3000/courses` | **200 OK** | Course Catalog with Search & Filter Tabs |
+| `http://localhost:3000/courses/mastering-nextjs-15-supabase-architecture` | **200 OK** | Course syllabus & enrollment page |
+| `http://localhost:3000/courses/mastering-nextjs-15-supabase-architecture/learn/welcome-to-the-masterclass` | **200 OK** | Distraction-free video player & lesson notes |
+| `http://localhost:3000/login` | **200 OK** | Login form + Demo role switchers |
+| `http://localhost:3000/register` | **200 OK** | Registration with Student/Teacher role toggle |
+| `http://localhost:3000/student` | **307 Redirect** | Protected by Supabase Middleware -> `/login?redirectTo=%2Fstudent` |
+| `http://localhost:3000/teacher` | **307 Redirect** | Protected by Supabase Middleware -> `/login?redirectTo=%2Fteacher` |
+| `http://localhost:3000/admin` | **307 Redirect** | Protected by Supabase Middleware -> `/login?redirectTo=%2Fadmin` |
+
+---
+
+## 5. Next Steps for Subsequent Tasks
+
+1. **Supabase Project Connection**: Add real Supabase project credentials in `.env.local` and apply `supabase/migrations/20260912000000_init_lms_schema.sql` via Supabase Dashboard SQL Editor or Supabase CLI.
+2. **Task 2 (Auth & Profiles)**: Wire up Next.js Server Actions for email/password and OAuth authentication using `@supabase/ssr`.
+3. **Task 3 (Curriculum Builder)**: Implement the interactive drag-and-drop course and module editor for instructors.
+4. **Task 4 (Enrollment & Video Storage)**: Connect payments (Stripe/LemonSqueezy) and secure video delivery.

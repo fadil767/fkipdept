@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="English Department Dashboard">
+  <rect width="64" height="64" rx="14" fill="#005baa"/>
+  <path d="M12 24 32 14l20 10-20 10-20-10Z" fill="#ffd23f"/>
+  <path d="M20 30v9c6.5 4 17.5 4 24 0v-9" fill="none" stroke="#ffd23f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 26v12" stroke="#ffd23f" stroke-width="4" stroke-linecap="round"/>
+  <rect x="16" y="45" width="8" height="7" rx="2" fill="#fff"/>
+  <rect x="28" y="40" width="8" height="12" rx="2" fill="#fff"/>
+  <rect x="40" y="35" width="8" height="17" rx="2" fill="#fff"/>
+</svg>

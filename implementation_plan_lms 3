@@ -1,0 +1,129 @@
+# Task 3: Teacher Course Management Implementation Plan
+
+As Principal Full-Stack Developer, this plan outlines the architecture, database integration, and UI design for **Teacher Course Management**, covering the `/teacher/dashboard`, `/teacher/courses/create`, and the dynamic `/teacher/courses/[courseId]/builder` curriculum editor.
+
+---
+
+## Architecture & Data Flow
+
+```mermaid
+graph TD
+    TeacherDashboard["/teacher/dashboard<br>(Instructor Studio Table)"]
+    CreateCoursePage["/teacher/courses/create<br>(Course Metadata Form)"]
+    CourseBuilderPage["/teacher/courses/[courseId]/builder<br>(Dynamic Curriculum Editor)"]
+    
+    ServerActions["Server Actions (actions/courses.ts)"]
+    SupabaseDB["Supabase PostgreSQL<br>(courses, modules, lessons)"]
+
+    TeacherDashboard -->|"Click 'Create Course'"| CreateCoursePage
+    CreateCoursePage -->|"Submit createCourseAction()"| ServerActions
+    ServerActions -->|"Insert into courses"| SupabaseDB
+    ServerActions -->|"Redirect"| CourseBuilderPage
+    
+    CourseBuilderPage -->|"createModuleAction()"| ServerActions
+    CourseBuilderPage -->|"createLessonAction()"| ServerActions
+    CourseBuilderPage -->|"reorderCurriculumAction()"| ServerActions
+    CourseBuilderPage -->|"publishCourseAction()"| ServerActions
+    
+    CourseBuilderPage -->|"Back to studio"| TeacherDashboard
+```
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Route Structure**:
+> - Dashboard: `/teacher/dashboard` (with full course table, stats, and action triggers).
+> - Course Creation: `/teacher/courses/create` (creates course record and redirects straight into the curriculum builder).
+> - Curriculum Builder: `/teacher/courses/[courseId]/builder` (visual module and lesson tree editor).
+>
+> **Interactive Reordering Pattern**:
+> To guarantee flawless React 19 / Next.js 15 compatibility and mobile friendliness without heavy third-party drag bundles, we will implement an accessible, fluid reordering system with intuitive **Move Up / Move Down** controls, inline drag indicators, and instant visual state updates synced to PostgreSQL `order_index`.
+
+---
+
+## Open Questions
+
+> [!NOTE]
+> 1. **Video URL Formats**: The lesson editor will support standard video URLs (YouTube, Vimeo, direct MP4/M3U8 URLs, or Supabase Storage links) with automatic provider detection and live preview.
+> 2. **Course Deletion Policy**: When a teacher deletes a course in draft status, all associated modules, lessons, and draft progress will cascade delete. (If students are already enrolled, a safe confirmation will block deletion).
+
+---
+
+## Proposed Changes
+
+### 1. New UI Primitives (Shadcn UI)
+
+#### [NEW] [textarea.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/components/ui/textarea.tsx)
+- Standard textarea primitive for course and lesson descriptions/content.
+
+#### [NEW] [dialog.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/components/ui/dialog.tsx)
+- Accessible modal dialog component for adding/editing lessons and modules.
+
+---
+
+### 2. Backend Server Actions
+
+#### [NEW] [courses.ts](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/actions/courses.ts)
+Type-safe Server Actions for teacher operations:
+- `createCourseAction(formData)`: Validates title, slug, description, thumbnail_url, price, status; resolves logged-in teacher ID; inserts into `courses`; redirects to `/teacher/courses/${id}/builder`.
+- `updateCourseAction(courseId, data)`: Updates course details and publication status (`draft` / `published`).
+- `deleteCourseAction(courseId)`: Deletes course and cascaded relations.
+- `createModuleAction(courseId, title, description)`: Inserts new module with calculated next `order_index`.
+- `deleteModuleAction(moduleId, courseId)`: Removes module.
+- `createLessonAction(moduleId, courseId, data)`: Inserts new lesson (Title, Slug, LessonType [video/text], VideoURL, Content, Duration, Free Preview).
+- `updateLessonAction(lessonId, courseId, data)`: Updates lesson content or video link.
+- `deleteLessonAction(lessonId, courseId)`: Removes lesson.
+- `reorderCurriculumAction(type: 'modules' | 'lessons', parentId, items: { id, orderIndex }[])`: Updates order indexes in batch.
+
+---
+
+### 3. UI Pages & Components
+
+#### [MODIFY] [teacher/dashboard/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/teacher/dashboard/page.tsx)
+- Dynamic courses table displaying teacher's courses (Title, Status, Price, Modules/Lessons count, Student count, Actions: Edit Builder, Preview, Delete).
+- Empty state with "Create Your First Course" illustration and CTA.
+- Primary "Create Course" button linking to `/teacher/courses/create`.
+
+#### [NEW] [teacher/courses/create/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/teacher/courses/create/page.tsx)
+- Course creation form with:
+  - Title input with automatic slug generator.
+  - Rich description textarea.
+  - Thumbnail image URL input with live image preview.
+  - Price input (free $0.00 or custom price).
+  - Status toggle (Draft vs. Published).
+  - "Create & Continue to Curriculum" action.
+
+#### [NEW] [teacher/courses/[courseId]/builder/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/teacher/courses/[courseId]/builder/page.tsx)
+- Interactive Curriculum Builder:
+  - Top action bar: Course Title, Status badge (Draft/Published), "Publish Course" button, "Preview as Student" link.
+  - Modules accordion tree:
+    - Module header with order index, edit title, delete module, and move up/down.
+    - Lessons list within each module:
+      - Lesson item showing icon (Video vs. Text), duration, "Free Preview" pill, move up/down.
+      - "Add Lesson" button opening modal/sheet: Title, Type (Video/Text), Video URL, Rich Content/Notes, Duration, Free Preview switch.
+    - "Add New Module" button.
+
+---
+
+## Verification Plan
+
+### Automated Checks
+- Run TypeScript compilation and build:
+  ```bash
+  npm run build
+  ```
+- Verify all routes build cleanly:
+  - `/teacher/dashboard`
+  - `/teacher/courses/create`
+  - `/teacher/courses/[courseId]/builder`
+- Test route HTTP responses with PowerShell:
+  - Verify protected routes redirect unauthenticated users to `/login`.
+  - Verify 200 OK on authenticated page compilation.
+
+### Manual Verification
+- Test creating a course via `/teacher/courses/create`.
+- Test adding modules and lessons dynamically in `/teacher/courses/[courseId]/builder`.
+- Verify reordering lessons and modules.
+- Verify that status toggles between Draft and Published.

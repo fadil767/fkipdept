@@ -1,0 +1,76 @@
+# Rencana Implementasi: Integrasi Real-Time Multi-User (Antar-Perangkat & Multi-Jendela)
+
+Menyiapkan integrasi sinkronisasi **Real-time** sehingga ketika beberapa pengguna (admin, pengelola prodi, atau dosen) membuka aplikasi secara bersamaan di komputer/perangkat yang berbeda, setiap perubahan data (dosen, plotting, persetujuan tutor, atau rencana kelas) akan langsung ter-update di layar pengguna lain secara instan tanpa perlu memuat ulang (*refresh*) halaman.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> Untuk sinkronisasi **antar-komputer yang berbeda melalui internet**, diperlukan proyek database **Supabase** (tersedia tier gratis).
+> Kami akan menyediakan skrip database SQL lengkap khusus FKIP (`supabase-fkip-complete.sql`) yang tinggal di-*run* di SQL Editor Supabase.
+> 
+> Selain itu, kami juga akan menyematkan **`BroadcastChannel` API** lokal sehingga Anda dapat langsung menguji coba sinkronisasi realtime secara instan di komputer yang sama (misal membuka 2 jendela/tab secara bersamaan) bahkan sebelum menghubungkan akun Supabase.
+
+---
+
+## Proposed Changes
+
+### 1. Dependensi & Modul Supabase Realtime
+
+#### [MODIFY] [`package.json`](file:///c:/Users/Fadil/.gemini/antigravity-ide/scratch/dept.dashboard-main/package.json)
+- Menambahkan dependensi resmi `@supabase/supabase-js` untuk koneksi WebSocket Realtime terkelola dan penanganan *reconnect* otomatis.
+
+#### [NEW] [`src/lib/realtime.js`](file:///c:/Users/Fadil/.gemini/antigravity-ide/scratch/dept.dashboard-main/src/lib/realtime.js)
+- Modul manajemen koneksi Realtime yang mengkombinasikan:
+  1. **Supabase Realtime (WebSocket)**: Menggunakan `supabase.channel()` untuk mendengarkan mutasi tabel PostgreSQL (`postgres_changes`: `INSERT`, `UPDATE`, `DELETE`) secara live dari server Supabase.
+  2. **Local Multi-Tab BroadcastChannel**: Memungkinkan uji coba instan sinkronisasi realtime antar-tab/jendela di perangkat yang sama tanpa jeda jaringan.
+  3. **Manajemen Status Koneksi**: Status `connected`, `connecting`, `disconnected`, atau `local-only` untuk indikator UI.
+
+---
+
+### 2. Integrasi State Realtime di [`src/App.jsx`](file:///c:/Users/Fadil/.gemini/antigravity-ide/scratch/dept.dashboard-main/src/App.jsx)
+
+#### [MODIFY] [`src/App.jsx`](file:///c:/Users/Fadil/.gemini/antigravity-ide/scratch/dept.dashboard-main/src/App.jsx)
+- **Realtime Event Listener**:
+  - Mendengarkan perubahan data `lecturers`, `term_plottings`, `tutor_submissions`, dan `course_class_plans`.
+  - Ketika data diubah oleh pengguna lain, state lokal langsung di-*patch* secara mulus tanpa mengganggu input form yang sedang aktif diketik pengguna.
+- **Broadcast on Local Action**:
+  - Setiap aksi simpan, edit, plotting, atau hapus dosen memancarkan sinyal pembaruan ke kanal realtime.
+- **Indikator Status Realtime**:
+  - Menampilkan badge status koneksi live di header/navbar (misal: badge hijau berkedip `● Realtime Aktif` saat terhubung, atau `● Mode Lokal`).
+  - Notifikasi toast halus ketika data masuk dari pengguna lain (*"Data diperbarui oleh admin lain"*).
+
+---
+
+### 3. Skrip Database Lengkap Khusus FKIP
+
+#### [NEW] [`supabase-fkip-complete.sql`](file:///c:/Users/Fadil/.gemini/antigravity-ide/scratch/dept.dashboard-main/supabase-fkip-complete.sql)
+- Struktur tabel PostgreSQL: `lecturers`, `courses`, `academic_terms`, `term_plottings`, `course_class_plans`, dan `tutor_submissions`.
+- Mengaktifkan publikasi realtime Supabase:
+  ```sql
+  alter publication supabase_realtime add table public.lecturers;
+  alter publication supabase_realtime add table public.term_plottings;
+  alter publication supabase_realtime add table public.course_class_plans;
+  alter publication supabase_realtime add table public.tutor_submissions;
+  ```
+- Kebijakan Row Level Security (RLS) untuk keamanan multi-admin dan formulir publik.
+- Data awal (*seed data*) resmi katalog FKIP (mata kuliah keguruan `MKDK4001`, `PDGK4105`, dll., dosen `FKIP001` - `FKIP008`, dan semester FKIP).
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Menjalankan `npm run build` untuk memverifikasi bundle client dan dependensi `@supabase/supabase-js` terkompilasi bersih tanpa error.
+- Menjalankan simulasi pengiriman dan penerimaan pesan `BroadcastChannel` / event realtime melalui skrip pengujian scratch di Node.js / browser.
+
+### Manual Verification
+1. **Pengujian Multi-Tab / Multi-Window Lokal**:
+   - Membuka aplikasi di dua tab peramban berdampingan (`http://localhost:5173/`).
+   - Pada Tab 1: Menghapus atau menambah dosen, atau memindahkan plotting.
+   - Mengamati Tab 2: Memastikan perubahan langsung tampak detik itu juga secara otomatis tanpa perlu refresh.
+2. **Pengujian Notifikasi Realtime**:
+   - Memastikan toast notifikasi muncul dengan halus saat pembaruan dari luar diterima.
+3. **Pengujian Mode Offline & Reconnect**:
+   - Memutus koneksi internet sementara untuk memastikan antrean data lokal tetap aman dan terkirim saat online kembali.

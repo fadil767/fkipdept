@@ -1,0 +1,158 @@
+# Task 2: Authentication & Role Routing Implementation Plan
+
+As Principal Full-Stack Developer, this plan outlines the architecture for **Supabase Authentication**, **Role-Based Routing**, and **Edge Middleware Route Protection** for our custom LMS.
+
+---
+
+## Architecture & Authentication Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Student / Teacher
+    participant Browser as Browser (Next.js Client)
+    participant Action as Server Action (actions/auth.ts)
+    participant SupabaseAuth as Supabase Auth (auth.users)
+    participant DB as Supabase PostgreSQL (public.profiles)
+    participant Middleware as Edge Middleware (middleware.ts)
+
+    Note over User,Browser: Sign Up Flow
+    User->>Browser: Enters email, password, full_name, selects Role (student/teacher)
+    Browser->>Action: Form submit -> signup(formData)
+    Action->>SupabaseAuth: supabase.auth.signUp({ email, password, options: { data: { full_name, role } } })
+    SupabaseAuth-->>DB: DB Trigger: handle_new_user() creates public.profiles row
+    SupabaseAuth-->>Action: Auth Session & User created
+    Action-->>Browser: Redirect to /student/dashboard or /teacher/dashboard
+
+    Note over User,Browser: Login & Role Redirection
+    User->>Browser: Submits email & password on /login
+    Browser->>Action: Form submit -> login(formData)
+    Action->>SupabaseAuth: supabase.auth.signInWithPassword({ email, password })
+    Action->>DB: Query public.profiles WHERE id = user.id (read role)
+    alt Role == 'teacher'
+        Action-->>Browser: Redirect to /teacher/dashboard
+    else Role == 'student'
+        Action-->>Browser: Redirect to /student/dashboard
+    else Role == 'admin'
+        Action-->>Browser: Redirect to /admin/dashboard
+    end
+
+    Note over Browser,Middleware: Subsequent Protected Route Requests
+    Browser->>Middleware: Request /teacher/dashboard
+    Middleware->>SupabaseAuth: Verify JWT & fetch session user
+    alt User is student trying to access /teacher/*
+        Middleware-->>Browser: Redirect 307 -> /student/dashboard?error=unauthorized
+    else Valid Teacher
+        Middleware-->>Browser: Allow (NextResponse.next())
+    end
+```
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Dashboard Routes Alignment**:
+> The user specified:
+> - Teacher redirection: `/teacher/dashboard`
+> - Student redirection: `/student/dashboard`
+> 
+> In Task 1, routes were at `/teacher` and `/student`. We will create:
+> - `src/app/(dashboard)/teacher/dashboard/page.tsx`
+> - `src/app/(dashboard)/student/dashboard/page.tsx`
+> - `src/app/(dashboard)/admin/dashboard/page.tsx`
+> And configure `/teacher` and `/student` to seamlessly rewrite or redirect to their `/dashboard` sub-paths for complete backwards compatibility.
+>
+> **Role Resolution in Middleware**:
+> When a user logs in, Supabase stores `role` inside `user.user_metadata.role` (which is encoded in the JWT session cookie). The middleware checks `user.user_metadata.role` instantly without incurring an extra network roundtrip database query on every edge request! If metadata is missing, it falls back to querying `public.profiles`.
+
+---
+
+## Open Questions
+
+> [!NOTE]
+> 1. **Email Confirmation**: In local development or production, do you want auto-confirm enabled for instant sign-ins, or require email verification link confirmation? *(We will support instant sign-in with clear feedback if email verification is enabled on Supabase)*.
+
+---
+
+## Proposed Changes
+
+### 1. UI Primitives (Shadcn UI)
+
+#### [NEW] [input.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/components/ui/input.tsx)
+- Reusable accessible input component with focus rings and error states.
+
+#### [NEW] [label.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/components/ui/label.tsx)
+- Accessible form label.
+
+#### [NEW] [alert.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/components/ui/alert.tsx)
+- Clean error and success alert banners for form validation and auth messages.
+
+---
+
+### 2. Authentication Server Actions
+
+#### [NEW] [auth.ts](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/actions/auth.ts)
+- `login(formData)`: Validates credentials, executes `signInWithPassword`, extracts role, and redirects to `/teacher/dashboard`, `/student/dashboard`, or `/admin/dashboard`.
+- `signup(formData)`: Validates form with Zod (`email`, `password`, `fullName`, `role`), executes `signUp` with user metadata, and redirects to the role dashboard.
+- `signOutAction()`: Signs out session via `@supabase/ssr` cookies and redirects to `/login`.
+
+---
+
+### 3. Auth Pages with Shadcn UI
+
+#### [MODIFY] [login/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(auth)/login/page.tsx)
+- Interactive client form utilizing `useActionState` / Server Action.
+- Email and password inputs with validation.
+- Quick demo role login helpers (pre-filling credentials).
+- Error alert banners for invalid credentials or session timeouts.
+
+#### [MODIFY] [register/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(auth)/register/page.tsx)
+- Interactive client form with Student vs. Teacher toggle selection.
+- Full name, email, and password validation.
+- Real-time role badge feedback.
+
+---
+
+### 4. Role-Based Route Hierarchy
+
+#### [NEW] [student/dashboard/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/student/dashboard/page.tsx)
+- Student learning hub: Enrolled courses, course progress meters, resume lecture button.
+
+#### [NEW] [teacher/dashboard/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/teacher/dashboard/page.tsx)
+- Instructor studio: Course catalog management, student counts, gross revenue, curriculum builder link.
+
+#### [NEW] [admin/dashboard/page.tsx](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/app/(dashboard)/admin/dashboard/page.tsx)
+- Platform admin overview: User roles distribution, platform courses, global revenue.
+
+---
+
+### 5. Edge Middleware RBAC Protection
+
+#### [MODIFY] [middleware.ts](file:///C:/Users/Fadil/.gemini/antigravity-ide/scratch/custom-lms/src/lib/supabase/middleware.ts)
+- Updates session cookies with `@supabase/ssr`.
+- Enforces strict RBAC:
+  - **Unauthenticated**: Any access to `/student/*`, `/teacher/*`, or `/admin/*` redirects to `/login?redirectTo=<path>`.
+  - **Student Role**:
+    - Permitted: `/student/*`, `/courses/*`
+    - Prohibited: `/teacher/*`, `/admin/*` (redirects to `/student/dashboard?error=unauthorized`)
+  - **Teacher Role**:
+    - Permitted: `/teacher/*`, `/courses/*`
+    - Prohibited: `/admin/*` (redirects to `/teacher/dashboard?error=unauthorized`)
+  - **Admin Role**: Global access.
+  - **Already Authenticated**: Accessing `/login` or `/register` automatically redirects to their respective `/dashboard`.
+
+---
+
+## Verification Plan
+
+### Automated Checks
+- Run TypeScript compilation and build:
+  ```bash
+  npm run build
+  ```
+- Test HTTP responses and status redirects:
+  - Unauthenticated `/teacher/dashboard` -> HTTP 307 to `/login`
+  - Unauthenticated `/student/dashboard` -> HTTP 307 to `/login`
+  - Student attempting `/teacher/dashboard` -> HTTP 307 to `/student/dashboard?error=unauthorized`
+- Form client validation checks.

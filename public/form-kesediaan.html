@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulir Kesediaan Mengajar Tutor FKIP — Universitas Terbuka</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #005BAA;
+      --primary-dark: #003D73;
+      --accent: #FFD23F;
+      --navy: #102F52;
+      --bg: #F4F7FB;
+      --card-bg: #FFFFFF;
+      --border: #D7E4F2;
+      --text: #102F52;
+      --text-muted: #5B6678;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 680px;
+    }
+    .header-card {
+      background: linear-gradient(135deg, #005BAA 0%, #08335E 100%);
+      color: #fff;
+      padding: 28px 24px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      box-shadow: 0 10px 25px -5px rgba(0,91,170,0.2);
+    }
+    .brand-tag {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 6px;
+      display: inline-block;
+    }
+    .header-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .header-desc {
+      font-size: 0.85rem;
+      color: #e2eeff;
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+    .form-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-top: none;
+      padding: 32px 24px;
+      border-radius: 0 0 var(--radius) var(--radius);
+      box-shadow: 0 4px 20px -2px rgba(16,47,82,0.06);
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--navy);
+      margin-top: 16px;
+      margin-bottom: 4px;
+    }
+    .section-head:first-child { margin-top: 0; }
+    .section-num {
+      background: #E5EEF8;
+      color: var(--primary);
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .section-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 540px) { .grid-2 { grid-template-columns: 1fr; } }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #334E68;
+      margin-bottom: 6px;
+    }
+    .req { color: var(--primary); }
+    input[type="text"], input[type="email"], input[type="tel"], select, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      border: 1px solid #CCDCEF;
+      border-radius: 10px;
+      background: #F9FBFE;
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,91,170,0.12);
+    }
+    .chips-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .chip {
+      padding: 7px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #D7E4F2;
+      border-radius: 20px;
+      background: #fff;
+      color: #44607A;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .chip:hover {
+      border-color: #96BFE6;
+      background: #F2F7FC;
+    }
+    .chip.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,91,170,0.25);
+    }
+    .courses-box {
+      border: 1px solid var(--border);
+      background: #F9FBFE;
+      border-radius: 10px;
+      padding: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .course-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .course-item:hover { background: #fff; }
+    .course-code {
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.75rem;
+      background: #E5EEF8;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0,91,170,0.25);
+      margin-top: 12px;
+    }
+    .btn-submit:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+    .btn-submit:active {
+      transform: scale(0.99);
+    }
+    .success-card {
+      display: none;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px -5px rgba(0,0,0,0.06);
+    }
+    .check-icon {
+      width: 60px;
+      height: 60px;
+      background: #DCFCE7;
+      color: #16A34A;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div id="formContainer">
+      <div class="header-card">
+        <span class="brand-tag">Universitas Terbuka</span>
+        <h1 class="header-title">Formulir Kesediaan Mengajar Tutor FKIP</h1>
+        <p class="header-desc">
+          Konfirmasi data profil dan kesediaan mengampu kelas tutorial Program Studi FKIP. Data akan otomatis disinkronkan ke sistem dashboard akademik.
+        </p>
+      </div>
+
+      <form id="tutorForm" class="form-card">
+        <div class="section-head">
+          <span class="section-num">1</span>
+          <span>Identitas & Kontak Tutor</span>
+        </div>
+        <p class="section-sub">Informasi dasar tutor untuk basis data akademik.</p>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>ID Tutor / NIP <span class="req">*</span></label>
+            <input type="text" id="tutorId" required placeholder="Contoh: FKIP009">
+          </div>
+          <div class="form-group">
+            <label>Gelar Tertinggi <span class="req">*</span></label>
+            <select id="degree">
+              <option value="Dr.">Dr.</option>
+              <option value="M.Pd." selected>M.Pd.</option>
+              <option value="M.Si.">M.Si.</option>
+              <option value="M.Ed.">M.Ed.</option>
+              <option value="S.Pd.">S.Pd.</option>
+              <option value="Prof. Dr.">Prof. Dr.</option>
+              <option value="Ph.D.">Ph.D.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Nama Lengkap beserta Gelar <span class="req">*</span></label>
+          <input type="text" id="name" required placeholder="Contoh: Dr. Rina Sulistiyowati, M.Pd.">
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Email Aktif <span class="req">*</span></label>
+            <input type="email" id="email" required placeholder="nama@ecampus.ut.ac.id">
+          </div>
+          <div class="form-group">
+            <label>Nomor WhatsApp / HP <span class="req">*</span></label>
+            <input type="tel" id="phone" required placeholder="0812-3456-7890">
+          </div>
+        </div>
+
+        <div class="section-head">
+          <span class="section-num">2</span>
+          <span>Bidang Kepakaran Bidang Ilmu Pendidikan (FKIP)</span>
+        </div>
+        <p class="section-sub">Pilih satu atau lebih bidang kepakaran yang Anda miliki.</p>
+
+        <div class="chips-grid" id="expertiseList">
+          <div class="chip selected" data-val="Strategi Pembelajaran di SD">Strategi Pembelajaran di SD</div>
+          <div class="chip selected" data-val="Evaluasi Pembelajaran">Evaluasi Pembelajaran</div>
+          <div class="chip" data-val="Penelitian Tindakan Kelas (PTK)">Penelitian Tindakan Kelas (PTK)</div>
+          <div class="chip" data-val="Perkembangan Peserta Didik">Perkembangan Peserta Didik</div>
+          <div class="chip" data-val="Profesi Keguruan">Profesi Keguruan</div>
+          <div class="chip" data-val="Pembelajaran Terpadu di SD">Pembelajaran Terpadu di SD</div>
+          <div class="chip" data-val="Keterampilan Berbahasa Indonesia SD">Keterampilan Berbahasa Indonesia SD</div>
+          <div class="chip" data-val="Pembelajaran Matematika SD">Pembelajaran Matematika SD</div>
+          <div class="chip" data-val="Media & Teknologi Pembelajaran">Media & Teknologi Pembelajaran</div>
+        </div>
+
+        <div class="section-head" style="margin-top: 24px;">
+          <span class="section-num">3</span>
+          <span>Kesediaan Kelas & Mata Kuliah</span>
+        </div>
+        <p class="section-sub">Tentukan alokasi kelas tutorial dan mata kuliah yang siap diampu.</p>
+
+        <div class="form-group">
+          <label>Kesediaan Jumlah Kelas Tutorial (1 - 5 Kelas)</label>
+          <select id="availableClasses">
+            <option value="1">1 Kelas</option>
+            <option value="2" selected>2 Kelas</option>
+            <option value="3">3 Kelas</option>
+            <option value="4">4 Kelas</option>
+            <option value="5">5 Kelas</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Mata Kuliah FKIP yang Siap Diampu:</label>
+          <div class="courses-box">
+            <label class="course-item"><input type="checkbox" name="course" value="MKDK4001"><span class="course-code">MKDK4001</span> Pengantar Pendidikan (3 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="MKDK4002"><span class="course-code">MKDK4002</span> Perkembangan Peserta Didik (2 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="MKDK4005"><span class="course-code">MKDK4005</span> Profesi Keguruan (2 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4101"><span class="course-code">PDGK4101</span> Keterampilan Berbahasa Indonesia (3 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4105"><span class="course-code">PDGK4105</span> Strategi Pembelajaran di SD (3 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4108"><span class="course-code">PDGK4108</span> Matematika (4 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4201"><span class="course-code">PDGK4201</span> Pembelajaran PKn di SD (3 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4205"><span class="course-code">PDGK4205</span> Pembelajaran Terpadu di SD (2 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="PDGK4301"><span class="course-code">PDGK4301</span> Evaluasi Pembelajaran di SD (2 SKS)</label>
+            <label class="course-item"><input type="checkbox" name="course" value="IDIK4008"><span class="course-code">IDIK4008</span> Penelitian Tindakan Kelas (2 SKS)</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Kirim Formulir untuk Ditinjau & Disetujui</button>
+      </form>
+    </div>
+
+    <!-- Success Container -->
+    <div id="successCard" class="success-card">
+      <div class="check-icon" style="background: #FFF0C2; color: #71540F;">⏳</div>
+      <h2 style="font-size: 1.4rem; color: #102F52;">Pengajuan Berhasil Terkirim!</h2>
+      <p style="font-size: 0.85rem; color: #5B6678; margin-top: 8px; line-height: 1.5;">
+        Terima kasih, data kesediaan mengajar Anda telah masuk ke sistem dan sedang menunggu <strong>verifikasi dan persetujuan (approval)</strong> dari tim pengelola Program Studi FKIP.
+      </p>
+      <div style="margin-top: 24px;">
+        <a href="/" style="display: inline-block; background: #005BAA; color: #fff; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 13px;">
+          Buka Dashboard FKIP
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Inisialisasi ID unik
+    document.getElementById("tutorId").value = "FKIP" + Math.floor(100 + Math.random() * 900);
+
+    // Toggle chip kepakaran
+    document.querySelectorAll(".chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        chip.classList.toggle("selected");
+      });
+    });
+
+    // Form submit
+    document.getElementById("tutorForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const selectedExp = Array.from(document.querySelectorAll(".chip.selected")).map(c => c.getAttribute("data-val"));
+      const selectedCourses = Array.from(document.querySelectorAll("input[name='course']:checked")).map(cb => cb.value);
+
+      const submission = {
+        id: document.getElementById("tutorId").value.trim().toUpperCase(),
+        degree: document.getElementById("degree").value,
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim().toLowerCase(),
+        phone: document.getElementById("phone").value.trim(),
+        expertise: selectedExp,
+        plotted: selectedCourses,
+        available: parseInt(document.getElementById("availableClasses").value) || 2,
+        rating: 5,
+        warning_note: "",
+        status: "pending",
+        submittedAt: new Date().toISOString()
+      };
+
+      // Simpan ke local storage antrean approval agar terbaca oleh dashboard
+      try {
+        const stored = JSON.parse(localStorage.getItem("ut_tutor_submissions") || "[]");
+        stored.unshift(submission);
+        localStorage.setItem("ut_tutor_submissions", JSON.stringify(stored));
+      } catch (err) {}
+
+      document.getElementById("formContainer").style.display = "none";
+      document.getElementById("successCard").style.display = "block";
+    });
+  </script>
+</body>
+</html>
