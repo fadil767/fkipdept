@@ -1892,555 +1892,384 @@ function TopNavigation({
   isOnline = true,
   realtimeStatus = { status: "CONNECTED", mode: "local" },
 }) {
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const activeTabRef = useRef(null);
+  const mobileNavRef = useRef(null);
+
   const termSelectValue = terms.some((term) => term.code === selectedTermCode)
     ? selectedTermCode
     : terms[0]?.code || "";
 
-  // Mobile Bottom Navigation Tabs definition
-  const mobilePrimaryTabs = [
-    { id: "dashboard", label: "Dashboard", icon: Icons.dashboard },
-    { id: "lecturers", label: "Dosen", icon: Icons.users },
-    { id: "plotting", label: "Plotting", icon: Icons.file },
-    {
-      id: "approvals",
-      label: "Persetujuan",
-      icon: Icons.inbox,
-      badge: pendingCount,
-    },
-  ];
+  // Auto-scroll active tab into center view on mobile/tablet viewports
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [active]);
 
   return (
-    <>
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-2xs">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 2xl:gap-4 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5">
-          {/* Left: Brand Identity */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <img
-              src="/logo.png"
-              alt="Universitas Terbuka"
-              className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 object-contain drop-shadow-2xs"
-            />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display text-xs sm:text-sm 2xl:text-base font-extrabold tracking-tight text-[#102f52] whitespace-nowrap">
-                  {department.name}
-                </span>
-                <span className="rounded-full bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 text-[9px] font-extrabold text-[#005baa]">
-                  S1
-                </span>
-              </div>
-              <p className="hidden 2xl:block text-[9px] font-bold uppercase tracking-[0.14em] text-[#005baa] whitespace-nowrap">
-                {department.subtitle}
-              </p>
-            </div>
-          </div>
-
-          {/* Center: Desktop Navigation Segmented Tabs */}
-          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-0.5 xl:p-1 shadow-2xs shrink-0">
-            {nav.map((item) => {
-              const Icon = item.icon;
-              const selected = active === item.id;
-              const isApprovals = item.id === "approvals";
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActive(item.id)}
-                  className={`relative flex items-center gap-1 xl:gap-1.5 rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
-                    selected
-                      ? "bg-[#005baa] text-white shadow-xs"
-                      : "text-[#334e68] hover:bg-white hover:text-[#005baa]"
-                  }`}
-                >
-                  <Icon className={`h-3.5 w-3.5 xl:h-4 xl:w-4 ${selected ? "text-white" : "text-[#627d98]"}`} />
-                  <span>{item.label}</span>
-                  {isApprovals && pendingCount > 0 && (
-                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black text-white shadow-xs animate-pulse">
-                      {pendingCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Right: Quick Controls & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2 xl:gap-2.5 shrink-0 ml-auto lg:ml-0">
-            {/* Term Switcher (Visible on both Mobile & Desktop) */}
-            {terms.length > 0 && (
-              <div
-                className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-1 sm:py-1.5 shadow-2xs max-w-[115px] sm:max-w-[140px] xl:max-w-[160px] 2xl:max-w-[180px]"
-                title={terms.find((t) => t.code === termSelectValue)?.name || "Pilih semester"}
-              >
-                <Icons.calendar className="h-3.5 w-3.5 text-[#005baa] shrink-0" />
-                <select
-                  aria-label="Pilih semester"
-                  value={termSelectValue}
-                  onChange={(e) => setSelectedTermCode(e.target.value)}
-                  className="w-full truncate bg-transparent text-[11px] sm:text-xs font-bold text-[#102f52] outline-none cursor-pointer"
-                >
-                  {terms.map((term) => (
-                    <option key={term.code} value={term.code}>
-                      {term.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Network & Sync Status Indicator */}
-            <div
-              className={`flex items-center gap-1.5 rounded-xl border px-2 py-1 sm:py-1.5 text-xs shadow-2xs shrink-0 transition-colors ${
-                !isOnline
-                  ? "border-amber-300 bg-amber-50/90 text-amber-900"
-                  : "border-slate-200 bg-white"
-              }`}
-              title={
-                !isOnline
-                  ? "Mode Offline: Internet terputus. Data tersimpan aman di perangkat ini."
-                  : isDemoSession
-                    ? "Realtime Lokal: Multi-tab saling tersinkron otomatis."
-                    : `Realtime Cloud (Supabase): ${realtimeStatus.status === "CONNECTED" ? "Terhubung Langsung" : realtimeStatus.status}`
-              }
-            >
-              <span
-                className={`h-2 w-2 rounded-full shrink-0 ${
-                  !isOnline
-                    ? "bg-amber-500 ring-2 ring-amber-300 animate-pulse"
-                    : isDemoSession
-                      ? "bg-blue-500 ring-2 ring-blue-200 animate-pulse"
-                      : realtimeStatus.status === "CONNECTED"
-                        ? "bg-emerald-500 ring-2 ring-emerald-200 animate-pulse"
-                        : "bg-amber-400 ring-2 ring-amber-200"
-                }`}
-              />
-              <span className="hidden sm:inline max-w-[95px] truncate text-[11px] font-bold text-[#4f6478]">
-                {!isOnline
-                  ? "Offline"
-                  : isDemoSession
-                    ? "Lokal"
-                    : realtimeStatus.status === "CONNECTED"
-                      ? "Live"
-                      : syncState === "saved"
-                        ? "Online"
-                        : dbStatus}
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-2xs">
+      {/* Primary Row: Logo & Brand + Desktop Center Nav + Quick Controls */}
+      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 2xl:gap-4 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5">
+        {/* Left: Brand Identity */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink min-w-0">
+          <img
+            src="/logo.png"
+            alt="Universitas Terbuka"
+            className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 object-contain drop-shadow-2xs"
+          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-display text-xs sm:text-sm 2xl:text-base font-extrabold tracking-tight text-[#102f52] truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[300px] xl:max-w-none">
+                {department.name}
+              </span>
+              <span className="shrink-0 rounded-full bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 text-[9px] font-extrabold text-[#005baa]">
+                S1
               </span>
             </div>
-
-            {/* Save Now Button if Supabase */}
-            {!isDemoSession && (
-              <button
-                type="button"
-                onClick={handleSaveNow}
-                disabled={saveNowDisabled}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-2 xl:px-2.5 py-1.5 text-xs font-bold text-[#005baa] hover:bg-blue-100 disabled:opacity-40 shadow-2xs shrink-0 cursor-pointer"
-                title="Upload perubahan data"
-              >
-                <Icons.check className="h-3.5 w-3.5" />
-                {pendingLecturerLabelCount > 0 ? `Simpan (${pendingLecturerLabelCount})` : "Simpan"}
-              </button>
-            )}
-
-            {/* Accessibility Quick Button in Navbar (Desktop) */}
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "a", altKey: true, bubbles: true })
-                );
-              }}
-              className="hidden lg:inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-[#005baa] hover:text-[#005baa] px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
-              title="Menu Aksesibilitas (Pintasan: Alt + A)"
-              aria-label="Buka Pengaturan Aksesibilitas"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-3.5 w-3.5 text-[#005baa]"
-              >
-                <circle cx="12" cy="4.5" r="2.2" />
-                <path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
-                <path d="M12 9v11" />
-                <path d="M9 20l3-5 3 5" />
-              </svg>
-              <span className="hidden 2xl:inline text-xs font-semibold">Aksesibilitas</span>
-            </button>
-
-            {/* User Profile Trigger Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen((prev) => !prev)}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-slate-300 p-1 sm:px-2 sm:py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
-                title={`Akun: ${userEmail || "Administrator"}`}
-                aria-expanded={userMenuOpen}
-                aria-haspopup="true"
-              >
-                <div className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#005baa] text-[11px] sm:text-[10px] font-bold text-white uppercase shadow-2xs shrink-0">
-                  {userEmail?.[0] || "A"}
-                </div>
-                <span className="hidden sm:inline max-w-[100px] xl:max-w-[120px] truncate text-xs font-bold text-[#102f52]">
-                  {userEmail?.split("@")[0] || "Admin"}
-                </span>
-                <Icons.chevronDown className={`hidden sm:block h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${userMenuOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {userMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-md">
-                    {/* Profil Aktif Card */}
-                    <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Akun Aktif</p>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
-                          isDemoSession ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${isDemoSession ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
-                          {isDemoSession ? "Demo Lokal" : "Cloud Supabase"}
-                        </span>
-                      </div>
-                      <p className="text-xs font-bold text-[#102f52] truncate" title={userEmail}>
-                        {userEmail || "Administrator"}
-                      </p>
-                      <p className="text-[11px] text-slate-500 font-medium">Administrator Program Studi</p>
-                    </div>
-
-                    {/* Quick Switch Section */}
-                    <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                      <p className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Beralih Akun (Switch)
-                      </p>
-
-                      {isDemoSession ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            onQuickSwitchToCloud?.();
-                          }}
-                          className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-[#005baa] group-hover:bg-[#005baa] group-hover:text-white transition-colors shrink-0">
-                              <Icons.cloud className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="truncate">
-                              <p className="font-bold truncate text-[#102f52] group-hover:text-[#005baa]">admin.fkip@ecampus.ut.ac.id</p>
-                              <p className="text-[10px] text-slate-400 font-normal">Beralih ke Cloud Supabase</p>
-                            </div>
-                          </div>
-                          <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#005baa] shrink-0" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            onQuickSwitchToDemo?.();
-                          }}
-                          className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-amber-50 hover:text-amber-900 transition-colors cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
-                              <Icons.users className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="truncate">
-                              <p className="font-bold truncate text-[#102f52] group-hover:text-amber-900">demo@fkip.ut.ac.id</p>
-                              <p className="text-[10px] text-slate-400 font-normal">Beralih ke Demo Lokal</p>
-                            </div>
-                          </div>
-                          <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-amber-800 shrink-0" />
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          onOpenSwitchAccount?.();
-                        }}
-                        className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-[#005baa] transition-colors cursor-pointer"
-                      >
-                        <Icons.swap className="h-4 w-4 text-[#005baa]" />
-                        <span>Kelola & Tambah Akun...</span>
-                      </button>
-                    </div>
-
-                    {/* Footer Logout */}
-                    <div className="mt-2 pt-2 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          onLogout();
-                        }}
-                        className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        <Icons.logout className="h-4 w-4 text-rose-600" />
-                        <span>Keluar (Logout)</span>
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            <p className="hidden 2xl:block text-[9px] font-bold uppercase tracking-[0.14em] text-[#005baa] whitespace-nowrap">
+              {department.subtitle}
+            </p>
           </div>
         </div>
-      </header>
 
-      {/* Modern App-like Bottom Navigation Bar for Mobile (<1024px) */}
-      <nav aria-label="Navigasi Utama Mobile" className="mobile-app-bottom-nav lg:hidden">
-        <div className="mx-auto grid grid-cols-5 items-center justify-around px-1 py-1 max-w-md">
-          {mobilePrimaryTabs.map((item) => {
+        {/* Center: Desktop Navigation Segmented Tabs (Visible on large monitors/desktops >= 1280px / xl) */}
+        <nav aria-label="Navigasi Menu Utama Desktop" className="hidden xl:flex items-center gap-0.5 2xl:gap-1 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-0.5 2xl:p-1 shadow-2xs shrink-0">
+          {nav.map((item) => {
             const Icon = item.icon;
-            const isSelected = active === item.id;
+            const selected = active === item.id;
+            const isApprovals = item.id === "approvals";
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => {
-                  setActive(item.id);
-                  setMoreMenuOpen(false);
-                }}
-                className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer ${
-                  isSelected
-                    ? "text-[#005baa] font-extrabold"
-                    : "text-slate-500 font-semibold hover:text-[#102f52]"
+                onClick={() => setActive(item.id)}
+                className={`relative flex items-center gap-1 xl:gap-1.5 rounded-xl px-2.5 2xl:px-3 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap cursor-pointer ${
+                  selected
+                    ? "bg-[#005baa] text-white shadow-xs"
+                    : "text-[#334e68] hover:bg-white hover:text-[#005baa]"
                 }`}
               >
-                <div className="relative flex items-center justify-center">
-                  <Icon className={`h-5 w-5 transition-transform ${isSelected ? "scale-110 text-[#005baa]" : "text-slate-500"}`} />
-                  {item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black text-white shadow-xs animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="mt-1 text-[10px] leading-tight tracking-tight text-center truncate max-w-full">
-                  {item.label}
-                </span>
-                {isSelected && (
-                  <span className="absolute bottom-0.5 h-1 w-5 rounded-full bg-[#005baa]" />
+                <Icon className={`h-3.5 w-3.5 xl:h-4 xl:w-4 shrink-0 ${selected ? "text-white" : "text-[#627d98]"}`} />
+                <span>{item.label}</span>
+                {isApprovals && pendingCount > 0 && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black shadow-xs ${
+                    selected ? "bg-white text-rose-600" : "bg-rose-600 text-white animate-pulse"
+                  }`}>
+                    {pendingCount}
+                  </span>
                 )}
               </button>
             );
           })}
+        </nav>
 
-          {/* 5th Tab: Lainnya (More Menu) */}
+        {/* Right: Quick Controls & User Profile */}
+        <div className="flex items-center gap-1.5 sm:gap-2 xl:gap-2.5 shrink-0 ml-auto xl:ml-0">
+          {/* Term Switcher (Visible on all devices) */}
+          {terms.length > 0 && (
+            <div
+              className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-1 sm:py-1.5 shadow-2xs max-w-[110px] sm:max-w-[140px] xl:max-w-[160px] 2xl:max-w-[180px]"
+              title={terms.find((t) => t.code === termSelectValue)?.name || "Pilih semester"}
+            >
+              <Icons.calendar className="h-3.5 w-3.5 text-[#005baa] shrink-0" />
+              <select
+                aria-label="Pilih semester"
+                value={termSelectValue}
+                onChange={(e) => setSelectedTermCode(e.target.value)}
+                className="w-full truncate bg-transparent text-[11px] sm:text-xs font-bold text-[#102f52] outline-none cursor-pointer"
+              >
+                {terms.map((term) => (
+                  <option key={term.code} value={term.code}>
+                    {term.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Network & Sync Status Indicator */}
+          <div
+            className={`flex items-center gap-1.5 rounded-xl border px-2 py-1 sm:py-1.5 text-xs shadow-2xs shrink-0 transition-colors ${
+              !isOnline
+                ? "border-amber-300 bg-amber-50/90 text-amber-900"
+                : "border-slate-200 bg-white"
+            }`}
+            title={
+              !isOnline
+                ? "Mode Offline: Internet terputus. Data tersimpan aman di perangkat ini."
+                : isDemoSession
+                  ? "Realtime Lokal: Multi-tab saling tersinkron otomatis."
+                  : `Realtime Cloud (Supabase): ${realtimeStatus.status === "CONNECTED" ? "Terhubung Langsung" : realtimeStatus.status}`
+            }
+          >
+            <span
+              className={`h-2 w-2 rounded-full shrink-0 ${
+                !isOnline
+                  ? "bg-amber-500 ring-2 ring-amber-300 animate-pulse"
+                  : isDemoSession
+                    ? "bg-blue-500 ring-2 ring-blue-200 animate-pulse"
+                    : realtimeStatus.status === "CONNECTED"
+                      ? "bg-emerald-500 ring-2 ring-emerald-200 animate-pulse"
+                      : "bg-amber-400 ring-2 ring-amber-200"
+              }`}
+            />
+            <span className="hidden sm:inline max-w-[95px] truncate text-[11px] font-bold text-[#4f6478]">
+              {!isOnline
+                ? "Offline"
+                : isDemoSession
+                  ? "Lokal"
+                  : realtimeStatus.status === "CONNECTED"
+                    ? "Live"
+                    : syncState === "saved"
+                      ? "Online"
+                      : dbStatus}
+            </span>
+          </div>
+
+          {/* Save Now Button if Supabase */}
+          {!isDemoSession && (
+            <button
+              type="button"
+              onClick={handleSaveNow}
+              disabled={saveNowDisabled}
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-2 xl:px-2.5 py-1.5 text-xs font-bold text-[#005baa] hover:bg-blue-100 disabled:opacity-40 shadow-2xs shrink-0 cursor-pointer"
+              title="Upload perubahan data"
+            >
+              <Icons.check className="h-3.5 w-3.5" />
+              {pendingLecturerLabelCount > 0 ? `Simpan (${pendingLecturerLabelCount})` : "Simpan"}
+            </button>
+          )}
+
+          {/* Accessibility Quick Button in Navbar (Desktop/Laptop) */}
           <button
             type="button"
-            onClick={() => setMoreMenuOpen((prev) => !prev)}
-            className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer ${
-              active === "courses" || active === "terms" || moreMenuOpen
-                ? "text-[#005baa] font-extrabold"
-                : "text-slate-500 font-semibold hover:text-[#102f52]"
-            }`}
+            onClick={() => {
+              window.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "a", altKey: true, bubbles: true })
+              );
+            }}
+            className="hidden lg:inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-[#005baa] hover:text-[#005baa] px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
+            title="Menu Aksesibilitas (Pintasan: Alt + A)"
+            aria-label="Buka Pengaturan Aksesibilitas"
           >
-            <div className="relative flex items-center justify-center">
-              <Icons.moreHorizontal className={`h-5 w-5 transition-transform ${active === "courses" || active === "terms" || moreMenuOpen ? "scale-110 text-[#005baa]" : "text-slate-500"}`} />
-            </div>
-            <span className="mt-1 text-[10px] leading-tight tracking-tight text-center truncate max-w-full">
-              Lainnya
-            </span>
-            {(active === "courses" || active === "terms" || moreMenuOpen) && (
-              <span className="absolute bottom-0.5 h-1 w-5 rounded-full bg-[#005baa]" />
-            )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5 text-[#005baa]"
+            >
+              <circle cx="12" cy="4.5" r="2.2" />
+              <path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
+              <path d="M12 9v11" />
+              <path d="M9 20l3-5 3 5" />
+            </svg>
+            <span className="hidden 2xl:inline text-xs font-semibold">Aksesibilitas</span>
           </button>
-        </div>
-      </nav>
 
-      {/* Mobile "Lainnya" Bottom Sheet Drawer */}
-      {moreMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
-          <div
-            className="fixed inset-0"
-            onClick={() => setMoreMenuOpen(false)}
-          />
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="relative z-10 w-full max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-slate-200 bg-white p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] shadow-2xl"
-          >
-            {/* Sheet Handle */}
-            <div className="mobile-sheet-handle" />
-
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="font-display text-base font-extrabold text-[#102f52]">
-                  Fitur & Pengaturan Lainnya
-                </span>
+          {/* User Profile Trigger Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-slate-300 p-1 sm:px-2 sm:py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
+              title={`Akun: ${userEmail || "Administrator"}`}
+              aria-expanded={userMenuOpen}
+              aria-haspopup="true"
+            >
+              <div className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#005baa] text-[11px] sm:text-[10px] font-bold text-white uppercase shadow-2xs shrink-0">
+                {userEmail?.[0] || "A"}
               </div>
-              <button
-                type="button"
-                onClick={() => setMoreMenuOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-                aria-label="Tutup menu"
-              >
-                <Icons.x className="h-4 w-4" />
-              </button>
-            </div>
+              <span className="hidden sm:inline max-w-[100px] xl:max-w-[120px] truncate text-xs font-bold text-[#102f52]">
+                {userEmail?.split("@")[0] || "Admin"}
+              </span>
+              <Icons.chevronDown className={`hidden sm:block h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${userMenuOpen ? "rotate-180" : ""}`} />
+            </button>
 
-            {/* Navigation Grid for Secondary Features */}
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setActive("courses");
-                  setMoreMenuOpen(false);
-                }}
-                className={`flex items-center gap-2.5 rounded-2xl p-3 text-left transition cursor-pointer border ${
-                  active === "courses"
-                    ? "border-[#005baa] bg-blue-50/70 text-[#005baa] shadow-2xs font-bold"
-                    : "border-slate-200/80 bg-slate-50/80 text-[#102f52] hover:bg-slate-100 font-semibold"
-                }`}
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-[#005baa] shrink-0">
-                  <Icons.book className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-tight">Mata Kuliah</p>
-                  <p className="text-[10px] text-slate-500">Katalog akademik</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActive("terms");
-                  setMoreMenuOpen(false);
-                }}
-                className={`flex items-center gap-2.5 rounded-2xl p-3 text-left transition cursor-pointer border ${
-                  active === "terms"
-                    ? "border-[#005baa] bg-blue-50/70 text-[#005baa] shadow-2xs font-bold"
-                    : "border-slate-200/80 bg-slate-50/80 text-[#102f52] hover:bg-slate-100 font-semibold"
-                }`}
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800 shrink-0">
-                  <Icons.calendar className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-tight">Semester</p>
-                  <p className="text-[10px] text-slate-500">Kalender & periode</p>
-                </div>
-              </button>
-            </div>
-
-            {/* Quick Actions List */}
-            <div className="space-y-2 border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setMoreMenuOpen(false);
-                  onOpenSwitchAccount?.();
-                }}
-                className="w-full flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/50 p-2.5 text-xs font-bold text-[#102f52] hover:bg-blue-50 hover:text-[#005baa] transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-[#005baa]">
-                    <Icons.swap className="h-4 w-4" />
-                  </div>
-                  <span>Beralih Akun (Switch Account)</span>
-                </div>
-                <Icons.chevronRight className="h-4 w-4 text-slate-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMoreMenuOpen(false);
-                  window.dispatchEvent(
-                    new KeyboardEvent("keydown", { key: "a", altKey: true, bubbles: true })
-                  );
-                }}
-                className="w-full flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/50 p-2.5 text-xs font-bold text-[#102f52] hover:bg-blue-50 hover:text-[#005baa] transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4"
-                    >
-                      <circle cx="12" cy="4.5" r="2.2" />
-                      <path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
-                      <path d="M12 9v11" />
-                      <path d="M9 20l3-5 3 5" />
-                    </svg>
-                  </div>
-                  <span>Aksesibilitas (A11y)</span>
-                </div>
-                <Icons.chevronRight className="h-4 w-4 text-slate-400" />
-              </button>
-
-              {!isDemoSession && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSaveNow?.();
-                    setMoreMenuOpen(false);
-                  }}
-                  disabled={saveNowDisabled}
-                  className="w-full flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer disabled:opacity-40"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                      <Icons.check className="h-4 w-4" />
+            {userMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setUserMenuOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-md">
+                  {/* Profil Aktif Card */}
+                  <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Akun Aktif</p>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+                        isDemoSession ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isDemoSession ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                        {isDemoSession ? "Demo Lokal" : "Cloud Supabase"}
+                      </span>
                     </div>
-                    <span>Simpan Perubahan ke Cloud ({pendingLecturerLabelCount})</span>
+                    <p className="text-xs font-bold text-[#102f52] truncate" title={userEmail}>
+                      {userEmail || "Administrator"}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-medium">Administrator Program Studi</p>
                   </div>
-                  <Icons.chevronRight className="h-4 w-4 text-emerald-600" />
-                </button>
-              )}
-            </div>
 
-            {/* Profile Info & Logout */}
-            <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 truncate text-xs font-semibold text-slate-700">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#005baa] text-xs font-bold text-white uppercase shrink-0">
-                  {userEmail?.[0] || "A"}
-                </div>
-                <div className="truncate">
-                  <span className="truncate block font-bold text-xs">{userEmail || "Admin"}</span>
-                  <span className="text-[10px] text-slate-400">
-                    {isDemoSession ? "Mode Demo (Lokal)" : "Cloud Supabase"}
-                  </span>
-                </div>
-              </div>
+                  {/* Quick Switch Section */}
+                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                    <p className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Beralih Akun (Switch)
+                    </p>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMoreMenuOpen(false);
-                  onLogout();
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 cursor-pointer shrink-0"
-              >
-                <Icons.logout className="h-3.5 w-3.5 text-rose-600" />
-                <span>Keluar</span>
-              </button>
-            </div>
-          </motion.div>
+                    {isDemoSession ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onQuickSwitchToCloud?.();
+                        }}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-[#005baa] group-hover:bg-[#005baa] group-hover:text-white transition-colors shrink-0">
+                            <Icons.cloud className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold truncate text-[#102f52] group-hover:text-[#005baa]">admin.fkip@ecampus.ut.ac.id</p>
+                            <p className="text-[10px] text-slate-400 font-normal">Beralih ke Cloud Supabase</p>
+                          </div>
+                        </div>
+                        <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#005baa] shrink-0" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onQuickSwitchToDemo?.();
+                        }}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl p-2 text-left text-xs font-semibold text-[#102f52] hover:bg-amber-50 hover:text-amber-900 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
+                            <Icons.users className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="truncate">
+                            <p className="font-bold truncate text-[#102f52] group-hover:text-amber-900">demo@fkip.ut.ac.id</p>
+                            <p className="text-[10px] text-slate-400 font-normal">Beralih ke Demo Lokal</p>
+                          </div>
+                        </div>
+                        <Icons.swap className="h-3.5 w-3.5 text-slate-400 group-hover:text-amber-800 shrink-0" />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onOpenSwitchAccount?.();
+                      }}
+                      className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-[#005baa] transition-colors cursor-pointer"
+                    >
+                      <Icons.swap className="h-4 w-4 text-[#005baa]" />
+                      <span>Kelola & Tambah Akun...</span>
+                    </button>
+                  </div>
+
+                  {/* Accessibility Modal Trigger on Mobile */}
+                  <div className="mt-2 pt-2 border-t border-slate-100 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        window.dispatchEvent(
+                          new KeyboardEvent("keydown", { key: "a", altKey: true, bubbles: true })
+                        );
+                      }}
+                      className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4 text-indigo-600"
+                      >
+                        <circle cx="12" cy="4.5" r="2.2" />
+                        <path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
+                        <path d="M12 9v11" />
+                        <path d="M9 20l3-5 3 5" />
+                      </svg>
+                      <span>Menu Aksesibilitas (A11y)</span>
+                    </button>
+                  </div>
+
+                  {/* Footer Logout */}
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                    >
+                      <Icons.logout className="h-4 w-4 text-rose-600" />
+                      <span>Keluar (Logout)</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      )}
-    </>
+      </div>
+
+      {/* Second Row: Dedicated Responsive Sub-Navbar (< 1280px / xl) for Mobile, Tablet, and Laptop */}
+      <div className="xl:hidden border-t border-slate-200/80 bg-slate-50/90 px-2 sm:px-4 py-1.5 shadow-2xs">
+        <nav
+          ref={mobileNavRef}
+          aria-label="Navigasi Menu Fitur Program Studi"
+          className="mx-auto flex w-full max-w-[1600px] items-center sm:justify-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
+        >
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const selected = active === item.id;
+            const isApprovals = item.id === "approvals";
+            return (
+              <button
+                key={item.id}
+                ref={selected ? activeTabRef : null}
+                id={`nav-tab-${item.id}`}
+                type="button"
+                onClick={() => setActive(item.id)}
+                className={`relative flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  selected
+                    ? "bg-[#005baa] text-white shadow-xs ring-2 ring-[#005baa]/25"
+                    : "bg-white border border-slate-200/90 text-[#334e68] hover:bg-slate-100 hover:text-[#005baa]"
+                }`}
+              >
+                <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${selected ? "text-white" : "text-[#627d98]"}`} />
+                <span className="leading-tight">{item.label}</span>
+                {isApprovals && pendingCount > 0 && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black shadow-xs ${
+                    selected ? "bg-white text-rose-600" : "bg-rose-600 text-white animate-pulse"
+                  }`}>
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </header>
   );
 }
 
@@ -4611,7 +4440,7 @@ export default function App() {
         isOnline={isOnline}
         realtimeStatus={realtimeStatus}
       />
-      <main id="main-content" tabIndex={-1} className="min-w-0 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 lg:pb-8 outline-none">
+      <main id="main-content" tabIndex={-1} className="min-w-0 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-12 sm:pb-16 outline-none">
         <div className="w-full">
           <Header
             active={active}
@@ -4636,7 +4465,7 @@ export default function App() {
       {realtimeToast && (
         <div
           role="status"
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 right-3 sm:right-5 z-45 flex items-center gap-3 rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-bold shadow-xl border backdrop-blur-md transition-all bg-[#102F52]/95 text-white border-cyan-400/40"
+          className="fixed bottom-5 sm:bottom-6 right-3 sm:right-5 z-45 flex items-center gap-3 rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-bold shadow-xl border backdrop-blur-md transition-all bg-[#102F52]/95 text-white border-cyan-400/40"
         >
           <span className="flex h-2.5 w-2.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
           <span>{realtimeToast.message}</span>
@@ -4655,7 +4484,7 @@ export default function App() {
       {networkToast && (
         <div
           role="status"
-          className={`fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-5 right-3 sm:right-5 z-45 flex items-center gap-3 rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-bold shadow-xl border backdrop-blur-md transition-all ${
+          className={`fixed bottom-5 sm:bottom-6 right-3 sm:right-5 z-45 flex items-center gap-3 rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-bold shadow-xl border backdrop-blur-md transition-all ${
             networkToast.type === "online"
               ? "bg-emerald-950/95 text-white border-emerald-500/40"
               : "bg-amber-950/95 text-white border-amber-500/40"
