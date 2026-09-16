@@ -1888,7 +1888,7 @@ function TopNavigation({
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-2xs">
-      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-2 sm:gap-3 lg:gap-4 px-3 sm:px-5 lg:px-6 py-2.5">
+      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 2xl:gap-4 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5">
         {/* Left: Brand Identity */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           <img
@@ -1898,21 +1898,21 @@ function TopNavigation({
           />
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-display text-sm sm:text-base font-extrabold tracking-tight text-[#102f52] whitespace-nowrap">
+              <span className="font-display text-xs sm:text-sm 2xl:text-base font-extrabold tracking-tight text-[#102f52] whitespace-nowrap">
                 {department.name}
               </span>
               <span className="rounded-full bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 text-[9px] font-extrabold text-[#005baa]">
                 S1
               </span>
             </div>
-            <p className="hidden xl:block text-[9px] font-bold uppercase tracking-[0.14em] text-[#005baa] whitespace-nowrap">
+            <p className="hidden 2xl:block text-[9px] font-bold uppercase tracking-[0.14em] text-[#005baa] whitespace-nowrap">
               {department.subtitle}
             </p>
           </div>
         </div>
 
         {/* Center: Desktop Navigation Segmented Tabs */}
-        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-1 shadow-2xs shrink-0">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-0.5 xl:p-1 shadow-2xs shrink-0">
           {nav.map((item) => {
             const Icon = item.icon;
             const selected = active === item.id;
@@ -1922,7 +1922,7 @@ function TopNavigation({
                 key={item.id}
                 type="button"
                 onClick={() => setActive(item.id)}
-                className={`relative flex items-center gap-1.5 rounded-xl px-2 xl:px-3 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                className={`relative flex items-center gap-1 xl:gap-1.5 rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
                   selected
                     ? "bg-[#005baa] text-white shadow-xs"
                     : "text-[#334e68] hover:bg-white hover:text-[#005baa]"
@@ -1941,11 +1941,11 @@ function TopNavigation({
         </nav>
 
         {/* Right: Quick Controls & User Profile */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto lg:ml-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2 shrink-0 ml-auto lg:ml-0">
           {/* Term Switcher */}
           {terms.length > 0 && (
             <div
-              className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-2xs max-w-[115px] lg:max-w-[135px] xl:max-w-[180px]"
+              className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-2xs max-w-[110px] lg:max-w-[125px] xl:max-w-[145px] 2xl:max-w-[180px]"
               title={terms.find((t) => t.code === termSelectValue)?.name || "Pilih semester"}
             >
               <Icons.calendar className="h-3.5 w-3.5 text-[#005baa] shrink-0" />
@@ -1990,7 +1990,7 @@ function TopNavigation({
                       : "bg-amber-400 ring-2 ring-amber-200"
               }`}
             />
-            <span className="hidden xl:inline max-w-[95px] truncate text-[11px] font-bold text-[#4f6478]">
+            <span className="hidden 2xl:inline max-w-[95px] truncate text-[11px] font-bold text-[#4f6478]">
               {!isOnline
                 ? "Offline"
                 : isDemoSession
@@ -2009,7 +2009,7 @@ function TopNavigation({
               type="button"
               onClick={handleSaveNow}
               disabled={saveNowDisabled}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-2.5 py-1.5 text-xs font-bold text-[#005baa] hover:bg-blue-100 disabled:opacity-40 shadow-2xs shrink-0 cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-2 xl:px-2.5 py-1.5 text-xs font-bold text-[#005baa] hover:bg-blue-100 disabled:opacity-40 shadow-2xs shrink-0 cursor-pointer"
               title="Upload perubahan data"
             >
               <Icons.check className="h-3.5 w-3.5" />
@@ -2025,7 +2025,7 @@ function TopNavigation({
                 new KeyboardEvent("keydown", { key: "a", altKey: true, bubbles: true })
               );
             }}
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-[#005baa] hover:text-[#005baa] px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-[#005baa] hover:text-[#005baa] px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
             title="Menu Aksesibilitas (Pintasan: Alt + A)"
             aria-label="Buka Pengaturan Aksesibilitas"
           >
@@ -2044,7 +2044,7 @@ function TopNavigation({
               <path d="M12 9v11" />
               <path d="M9 20l3-5 3 5" />
             </svg>
-            <span className="hidden xl:inline text-xs font-semibold">Aksesibilitas</span>
+            <span className="hidden 2xl:inline text-xs font-semibold">Aksesibilitas</span>
           </button>
 
           {/* User Profile & Actions Dropdown */}
@@ -2052,7 +2052,7 @@ function TopNavigation({
             <button
               type="button"
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="flex items-center gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 xl:gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 hover:bg-white hover:border-slate-300 px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-[#102f52] shadow-2xs transition-all cursor-pointer"
               title={`Akun: ${userEmail || "Administrator"}`}
               aria-expanded={userMenuOpen}
               aria-haspopup="true"
@@ -2060,7 +2060,7 @@ function TopNavigation({
               <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#005baa] text-[10px] font-bold text-white uppercase shadow-2xs shrink-0">
                 {userEmail?.[0] || "A"}
               </div>
-              <span className="hidden xl:inline max-w-[120px] truncate text-xs font-bold text-[#102f52]">
+              <span className="hidden 2xl:inline max-w-[120px] truncate text-xs font-bold text-[#102f52]">
                 {userEmail?.split("@")[0] || "Admin"}
               </span>
               <Icons.chevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${userMenuOpen ? "rotate-180" : ""}`} />
@@ -2072,7 +2072,7 @@ function TopNavigation({
                   className="fixed inset-0 z-40"
                   onClick={() => setUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 z-50 w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10 backdrop-blur-md">
+                <div className="absolute right-0 mt-2 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10 backdrop-blur-md">
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Masuk Sebagai</p>
                     <p className="mt-0.5 text-xs font-bold text-[#102f52] truncate" title={userEmail}>
