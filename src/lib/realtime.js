@@ -48,8 +48,8 @@ export function clearSupabaseConfig() {
 // Unique ID per tab/window instance to filter out self-originated broadcast messages
 export const INSTANCE_ID = "inst_" + Math.random().toString(36).substring(2, 9);
 
-// Singleton Supabase client for realtime connection
-let supabaseClient = null;
+// Singleton Supabase client for realtime connection and auth
+export let supabaseClient = null;
 if (IS_SUPABASE_CONFIGURED) {
   try {
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -62,6 +62,23 @@ if (IS_SUPABASE_CONFIGURED) {
   } catch (err) {
     console.warn("Failed to initialize Supabase realtime client:", err);
   }
+}
+
+export function getSupabaseClient() {
+  if (!supabaseClient && IS_SUPABASE_CONFIGURED) {
+    try {
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: {
+          params: {
+            eventsPerSecond: 10,
+          },
+        },
+      });
+    } catch (err) {
+      console.warn("Failed to initialize Supabase client:", err);
+    }
+  }
+  return supabaseClient;
 }
 
 // Local BroadcastChannel for instant zero-latency sync across tabs & desktop windows

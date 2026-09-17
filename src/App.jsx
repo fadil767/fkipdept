@@ -31,6 +31,11 @@ import {
   getStoredUserEmail,
   queueLecturerLabelChange,
   signIn,
+  sendEmailOtp,
+  verifyEmailOtp,
+  signInWithMicrosoftSSO,
+  signInWithGoogleSSO,
+  processOAuthCallback,
   signOut,
   storePendingSync,
   syncTableChanges,
@@ -2404,6 +2409,10 @@ const { LandingScreen, PublicLookupScreen, LoginScreen } = createAuthScreens({
   getPlottedCourseCounts,
   getTermScopedLecturers,
   signIn,
+  sendEmailOtp,
+  verifyEmailOtp,
+  signInWithMicrosoftSSO,
+  signInWithGoogleSSO,
 });
 
 const { Dashboard, Lecturers } = createDirectoryFeatures({
@@ -2807,6 +2816,7 @@ export default function App() {
   const [syncWakeSignal, setSyncWakeSignal] = useState(0);
   const [saveNowSignal, setSaveNowSignal] = useState(0);
   const [initialPublicLookupId, setInitialPublicLookupId] = useState("");
+  const [authError, setAuthError] = useState("");
 
   const {
     isOnline,
@@ -3664,6 +3674,39 @@ export default function App() {
     setSession({ userEmail: email, entryMode: "admin", isDemo: false });
   };
 
+  // Tangani hasil callback OAuth (Google Workspace SSO) saat halaman dimuat
+  useEffect(() => {
+    let isCancelled = false;
+    async function checkOAuthCallback() {
+      try {
+        const result = await processOAuthCallback();
+        if (isCancelled) return;
+        if (result && result.email) {
+          handleLogin(result.email);
+          const displayName =
+            result.user?.user_metadata?.full_name ||
+            result.user?.user_metadata?.name ||
+            result.email;
+          setRealtimeToast({
+            message: `Login SSO Akun UT berhasil! Selamat datang, ${displayName}.`,
+            type: "success",
+          });
+        }
+      } catch (err) {
+        if (isCancelled) return;
+        console.error("OAuth Callback Error:", err);
+        setAuthError(err.message || "Gagal memproses autentikasi Google SSO.");
+        setSession((prev) => ({ ...prev, entryMode: "login" }));
+      }
+    }
+
+    checkOAuthCallback();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const handleDemoLogin = () => {
     signOut();
     try {
@@ -4394,10 +4437,14 @@ export default function App() {
         <LoginScreen
           onLogin={handleLogin}
           onDemoLogin={handleDemoLogin}
-          onBack={() => setEntryMode("landing")}
+          onBack={() => {
+            setAuthError("");
+            setEntryMode("landing");
+          }}
           promptInstall={promptInstall}
           isInstalled={isInstalled}
           isOnline={isOnline}
+          authError={authError}
         />
         <InstallGuideModal
           isOpen={showInstallModal}

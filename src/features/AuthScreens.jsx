@@ -13,6 +13,10 @@ export function createAuthScreens(deps) {
     getPlottedCourseCounts,
     getTermScopedLecturers,
     signIn,
+    sendEmailOtp,
+    verifyEmailOtp,
+    signInWithMicrosoftSSO,
+    signInWithGoogleSSO,
   } = deps;
 
   const CHIP_TONES = [
@@ -847,6 +851,7 @@ function clearStoredSavedCredentials() {
     promptInstall,
     isInstalled,
     isOnline = true,
+    authError = "",
   }) {
     const saved = useMemo(() => getStoredSavedCredentials(), []);
     const [email, setEmail] = useState(() => saved.email);
@@ -856,8 +861,78 @@ function clearStoredSavedCredentials() {
     const [hasSavedCreds, setHasSavedCreds] = useState(() =>
       Boolean(saved.email && saved.password),
     );
-    const [error, setError] = useState("");
+    const [error, setError] = useState(() => authError || "");
     const [busy, setBusy] = useState(false);
+    const [ssoBusy, setSsoBusy] = useState(false);
+
+    const [authMode, setAuthMode] = useState("otp"); // 'otp' | 'password'
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
+    const [otpSuccessMsg, setOtpSuccessMsg] = useState("");
+    const [otpBusy, setOtpBusy] = useState(false);
+
+    useEffect(() => {
+      if (authError) {
+        setError(authError);
+      }
+    }, [authError]);
+
+    const handleSendOtp = async (event) => {
+      if (event) event.preventDefault();
+      setError("");
+      setOtpSuccessMsg("");
+      setOtpBusy(true);
+      try {
+        if (typeof sendEmailOtp !== "function") {
+          throw new Error("Layanan OTP email belum tersedia.");
+        }
+        await sendEmailOtp(email);
+        setOtpSent(true);
+        setOtpSuccessMsg(
+          `Tautan masuk dan kode verifikasi 6 digit telah dikirimkan ke email ${email}. Silakan cek kotak masuk Outlook e-Campus UT Anda!`
+        );
+      } catch (err) {
+        setError(err.message || "Gagal mengirimkan kode verifikasi ke email.");
+      } finally {
+        setOtpBusy(false);
+      }
+    };
+
+    const handleVerifyOtp = async (event) => {
+      if (event) event.preventDefault();
+      setError("");
+      setOtpBusy(true);
+      try {
+        if (typeof verifyEmailOtp !== "function") {
+          throw new Error("Layanan verifikasi OTP belum tersedia.");
+        }
+        const result = await verifyEmailOtp(email, otpCode);
+        if (result && result.email) {
+          onLogin(result.email);
+        }
+      } catch (err) {
+        setError(err.message || "Kode verifikasi salah atau telah kedaluwarsa.");
+      } finally {
+        setOtpBusy(false);
+      }
+    };
+
+    const handleSSO = async () => {
+      setError("");
+      setSsoBusy(true);
+      try {
+        if (typeof signInWithMicrosoftSSO === "function") {
+          await signInWithMicrosoftSSO();
+        } else if (typeof signInWithGoogleSSO === "function") {
+          await signInWithGoogleSSO();
+        } else {
+          throw new Error("Metode login SSO belum tersedia.");
+        }
+      } catch (err) {
+        setError(err.message || "Gagal membuka sesi SSO Microsoft UT.");
+        setSsoBusy(false);
+      }
+    };
 
     const isDemoCredentials =
       (email.trim().toLowerCase() === DEMO_ACCOUNT.email ||
@@ -1053,19 +1128,190 @@ function clearStoredSavedCredentials() {
                 </div>
               )}
 
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (
-                    !busy &&
-                    email &&
-                    password &&
-                    (USE_SUPABASE || isDemoCredentials)
-                  )
-                    submit();
-                }}
-                className="mt-6 space-y-4"
-              >
+              {error && (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs leading-5 font-medium text-rose-800">
+                  <div className="flex items-start gap-2">
+                    <Icons.warning className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabs Pemilihan Metode Masuk */}
+              <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("otp");
+                    setError("");
+                  }}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 transition cursor-pointer ${
+                    authMode === "otp"
+                      ? "bg-white text-[#005baa] shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  <svg className="h-4 w-4 text-[#005baa]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span>Link / OTP Email UT</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("password");
+                    setError("");
+                  }}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 transition cursor-pointer ${
+                    authMode === "password"
+                      ? "bg-white text-[#005baa] shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span>Kata Sandi</span>
+                </button>
+              </div>
+
+              {authMode === "otp" ? (
+                <div className="mt-5 space-y-4">
+                  {otpSuccessMsg && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-900">
+                      <div className="flex items-start gap-2">
+                        <Icons.check className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-emerald-950">Link Masuk & Kode Verifikasi Telah Dikirim!</p>
+                          <p className="mt-1 text-emerald-800">
+                            Silakan buka kotak masuk Outlook email <strong>{email}</strong>. Anda dapat mengklik tombol tautan di dalam email tersebut atau memasukkan kode 6 digit di bawah ini:
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!otpSent ? (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-[#6f8aa3]">
+                          Alamat Email Resmi UT
+                        </span>
+                        <div className="flex h-12 items-center gap-2.5 rounded-xl border border-[#ccdcef] bg-white px-3.5 transition focus-within:border-[#005baa]">
+                          <Icons.users className="h-4 w-4 text-[#93a7bc]" />
+                          <input
+                            id="otp-email"
+                            name="email"
+                            value={email}
+                            onChange={(event) => handleEmailChange(event.target.value)}
+                            type="email"
+                            autoComplete="email"
+                            placeholder="nama.anda@ecampus.ut.ac.id"
+                            className="w-full bg-transparent text-sm text-[#102f52] outline-none placeholder:text-[#9db1c6]"
+                          />
+                        </div>
+                      </label>
+                      <div className="flex items-center gap-1.5 text-[11px] text-[#5b6678]">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#10b981]" />
+                        <span>Khusus <strong>@ecampus.ut.ac.id</strong> & <strong>@ut.ac.id</strong></span>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={otpBusy || !email.trim() || !isOnline}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#005baa] px-5 py-3 text-sm font-semibold text-white shadow-xs transition hover:bg-[#004984] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      >
+                        {otpBusy ? (
+                          <span className="inline-flex items-center gap-2">
+                            <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Mengirim ke Email UT…
+                          </span>
+                        ) : (
+                          <span>Kirim Tautan / Kode Masuk</span>
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-[#6f8aa3]">
+                          Masukkan Kode 6-Digit (dari Email Outlook)
+                        </span>
+                        <div className="flex h-12 items-center gap-2.5 rounded-xl border border-[#ccdcef] bg-white px-3.5 transition focus-within:border-[#005baa]">
+                          <input
+                            id="otp-code"
+                            name="otpCode"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="123456"
+                            className="w-full bg-transparent text-center font-mono text-xl font-bold tracking-[0.3em] text-[#102f52] outline-none placeholder:text-slate-300 placeholder:tracking-normal"
+                          />
+                        </div>
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={otpBusy || otpCode.length < 6 || !isOnline}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#005baa] px-5 py-3 text-sm font-semibold text-white shadow-xs transition hover:bg-[#004984] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      >
+                        {otpBusy ? "Memverifikasi…" : "Verifikasi & Masuk ke Dashboard"}
+                      </button>
+
+                      <div className="flex items-center justify-between text-xs text-[#5b6678] pt-1">
+                        <button
+                          type="button"
+                          disabled={otpBusy}
+                          onClick={handleSendOtp}
+                          className="text-[#005baa] font-medium hover:underline cursor-pointer"
+                        >
+                          Kirim ulang kode
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOtpSent(false);
+                            setOtpCode("");
+                            setOtpSuccessMsg("");
+                          }}
+                          className="text-slate-500 hover:text-slate-800 cursor-pointer"
+                        >
+                          Ganti alamat email
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={useDemoAccount}
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-[#ccdcef] bg-white px-5 py-2.5 text-xs font-medium text-[#102f52] transition hover:bg-[#eaf2fb] cursor-pointer"
+                    >
+                      Gunakan akun demo lokal
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (
+                      !busy &&
+                      email &&
+                      password &&
+                      (USE_SUPABASE || isDemoCredentials)
+                    )
+                      submit();
+                  }}
+                  className="mt-5 space-y-4"
+                >
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-[#6f8aa3]">
                     Email / Nama Pengguna
@@ -1205,6 +1451,7 @@ function clearStoredSavedCredentials() {
                   Gunakan akun demo
                 </button>
               </form>
+              )}
               <p className="mt-4 text-center text-xs leading-5 text-[#93a7bc]">
                 Akun demo: {DEMO_ACCOUNT.email} / {DEMO_ACCOUNT.password}
               </p>

@@ -1,3 +1,5 @@
+import { getSupabaseClient } from "./realtime";
+
 const getStoredConfig = (key) => {
   try {
     return (typeof window !== "undefined" && window.localStorage?.getItem(key)) || "";
@@ -450,11 +452,288 @@ export async function signIn(email, password) {
   return saveAuthSession(data, cleanEmail);
 }
 
+export const ALLOWED_SSO_DOMAINS = ["ecampus.ut.ac.id", "ut.ac.id"];
+
+/**
+ * Memeriksa apakah email merupakan akun institusi resmi Universitas Terbuka
+ */
+export function isAuthorizedSSOEmail(email) {
+  if (!email || typeof email !== "string") return false;
+  const clean = email.trim().toLowerCase();
+  const domain = clean.split("@")[1] || "";
+  return (
+    ALLOWED_SSO_DOMAINS.includes(domain) ||
+    domain.endsWith(".ut.ac.id") ||
+    domain === "fkip.ut.ac.id"
+  );
+}
+
+/**
+ * Memulai proses otentikasi Microsoft 365 / Azure SSO (Office 365 UT) via Supabase
+ */
+export async function signInWithMicrosoftSSO() {
+  if (!USE_SUPABASE) {
+    throw new Error(
+      "Supabase belum dikonfigurasi. Hubungkan URL dan Anon Key Supabase terlebih dahulu.",
+    );
+  }
+  const client = getSupabaseClient();
+  if (!client?.auth) {
+    throw new Error("Supabase Auth client tidak siap.");
+  }
+
+  // Arahkan kembali ke origin saat ini tanpa hash / search lama
+  const redirectTo = window.location.origin + window.location.pathname;
+
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "azure",
+    options: {
+      redirectTo,
+      scopes: "email openid profile User.Read",
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export const signInWithUTSSO = signInWithMicrosoftSSO;
+
+/**
+ * Memulai proses otentikasi Google Workspace SSO via Supabase
+ */
+export async function signInWithGoogleSSO() {
+  if (!USE_SUPABASE) {
+    throw new Error(
+      "Supabase belum dikonfigurasi. Hubungkan URL dan Anon Key Supabase terlebih dahulu.",
+    );
+  }
+  const client = getSupabaseClient();
+  if (!client?.auth) {
+    throw new Error("Supabase Auth client tidak siap.");
+  }
+
+  // Arahkan kembali ke origin saat ini tanpa hash / search lama
+  const redirectTo = window.location.origin + window.location.pathname;
+
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      queryParams: {
+        access_type: "offline",
+        prompt: "select_account",
+        hd: "ecampus.ut.ac.id",
+      },
+    },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Mengirim Magic Link / Kode OTP ke email institusi UT
+ */
+export async function sendEmailOtp(email) {
+  if (!USE_SUPABASE) {
+    throw new Error(
+      "Supabase belum dikonfigurasi. Hubungkan URL dan Anon Key Supabase terlebih dahulu.",
+    );
+  }
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail) {
+    throw new Error("Silakan masukkan alamat email.");
+  }
+
+  // Validasi domain resmi UT
+  if (!isAuthorizedSSOEmail(cleanEmail)) {
+    throw new Error(
+      `Hanya alamat email resmi Universitas Terbuka (@ecampus.ut.ac.id atau @ut.ac.id) yang diperbolehkan.`,
+    );
+  }
+
+  const client = getSupabaseClient();
+  if (!client?.auth) {
+    throw new Error("Supabase Auth client tidak siap.");
+  }
+
+  const redirectTo = window.location.origin + window.location.pathname;
+
+  const { data, error } = await client.auth.signInWithOtp({
+    email: cleanEmail,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Gagal mengirim link/kode verifikasi ke email.");
+  }
+
+  return data;
+}
+
+/**
+ * Memverifikasi kode OTP 6-digit yang dikirimkan ke email
+ */
+export async function verifyEmailOtp(email, token) {
+  if (!USE_SUPABASE) {
+    throw new Error("Supabase belum dikonfigurasi.");
+  }
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanToken = String(token || "").trim();
+
+  if (!cleanEmail || !cleanToken) {
+    throw new Error("Email dan kode OTP wajib diisi.");
+  }
+
+  const client = getSupabaseClient();
+  if (!client?.auth) {
+    throw new Error("Supabase Auth client tidak siap.");
+  }
+
+  const { data, error } = await client.auth.verifyOtp({
+    email: cleanEmail,
+    token: cleanToken,
+    type: "email",
+  });
+
+  if (error) {
+    throw new Error(error.message || "Kode verifikasi salah atau telah kedaluwarsa.");
+  }
+
+  if (data?.session && data?.user) {
+    saveAuthSession(
+      {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_in: data.session.expires_in,
+        user: data.user,
+      },
+      cleanEmail,
+    );
+    return {
+      email: cleanEmail,
+      user: data.user,
+      session: data.session,
+    };
+  }
+
+  return { email: cleanEmail };
+}
+
+/**
+ * Menangkap dan memvalidasi callback sesi OAuth setelah redirect dari Google atau Magic Link
+ */
+export async function processOAuthCallback() {
+  if (!USE_SUPABASE || typeof window === "undefined") return null;
+
+  const hasAuthHash =
+    window.location.hash.includes("access_token=") ||
+    window.location.hash.includes("error=");
+  const hasAuthSearch =
+    window.location.search.includes("code=") ||
+    window.location.search.includes("error=");
+
+  if (!hasAuthHash && !hasAuthSearch) {
+    return null;
+  }
+
+  const client = getSupabaseClient();
+  if (!client?.auth) return null;
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(
+    window.location.hash.startsWith("#")
+      ? window.location.hash.substring(1)
+      : window.location.hash,
+  );
+  const rawError =
+    searchParams.get("error_description") ||
+    hashParams.get("error_description") ||
+    searchParams.get("error") ||
+    hashParams.get("error");
+
+  if (rawError) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    throw new Error(decodeURIComponent(rawError));
+  }
+
+  let session = null;
+  if (hasAuthSearch && searchParams.get("code")) {
+    const { data, error } = await client.auth.exchangeCodeForSession(
+      searchParams.get("code"),
+    );
+    if (error) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      throw error;
+    }
+    session = data.session;
+  }
+
+  if (!session) {
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      throw error;
+    }
+    session = data?.session;
+  }
+
+  if (session && session.user) {
+    const email = (session.user.email || "").trim().toLowerCase();
+
+    // Validasi domain resmi UT
+    if (!isAuthorizedSSOEmail(email)) {
+      await client.auth.signOut();
+      signOut();
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const domainError = new Error(
+        `Akses Ditolak: Akun "${email}" bukan email resmi Universitas Terbuka (@ecampus.ut.ac.id atau @ut.ac.id). Silakan login dengan akun email UT Anda.`,
+      );
+      domainError.code = "UNAUTHORIZED_DOMAIN";
+      throw domainError;
+    }
+
+    // Simpan sesi ke local storage
+    saveAuthSession(
+      {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: session.expires_in,
+        user: session.user,
+      },
+      email,
+    );
+
+    // Bersihkan URL dari token/code
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return {
+      email,
+      user: session.user,
+      session,
+    };
+  }
+
+  return null;
+}
+
 export function signOut() {
   localStorage.removeItem("ut_user_email");
   localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
   localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   localStorage.removeItem(ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+  try {
+    const client = getSupabaseClient();
+    client?.auth?.signOut()?.catch(() => {});
+  } catch (err) {
+    void err;
+  }
 }
 
 export function getStoredUserEmail() {
