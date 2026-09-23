@@ -77,7 +77,7 @@ function IconBase({ children, className = "h-5 w-5", ...props }) {
   );
 }
 
-const Icons = {
+const rawIcons = {
   book: (p) => (
     <IconBase {...p}>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -270,7 +270,26 @@ const Icons = {
       <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
     </IconBase>
   ),
+  alert: (p) => (
+    <IconBase {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </IconBase>
+  ),
+  filter: (p) => (
+    <IconBase {...p}>
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </IconBase>
+  ),
 };
+
+const Icons = new Proxy(rawIcons, {
+  get(target, prop) {
+    if (prop in target) return target[prop];
+    return target.warning || target.chart || ((p) => <IconBase {...p}><circle cx="12" cy="12" r="10" /></IconBase>);
+  },
+});
 
 const department = {
   name: "Program Studi FKIP",
