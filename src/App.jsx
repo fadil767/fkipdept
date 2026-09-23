@@ -1,21 +1,21 @@
-import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { createAuthScreens } from "./features/AuthScreens.jsx";
-import { TutorFormScreen } from "./features/TutorFormScreen.jsx";
-import { createApprovalsFeature } from "./features/ApprovalsFeature.jsx";
-import { createCatalogFeatures } from "./features/CatalogFeatures.jsx";
 import { createDirectoryFeatures } from "./features/DirectoryFeatures.jsx";
-import { createPlottingComponent } from "./features/Plotting.jsx";
-import { createAuditLogViewer } from "./features/AuditLogViewer.jsx";
 import AccessibilityWidget from "./features/AccessibilityWidget.jsx";
 import SwitchAccountModal, { saveRecentAccount } from "./features/SwitchAccountModal.jsx";
 import { logAction } from "./lib/auditLog.js";
 import { ROLES, ROLE_CONFIG, fetchUserRole, can } from "./lib/rbac.js";
-import UserManagementModal from "./features/UserManagementModal.jsx";
 import NotificationCenter from "./features/NotificationCenter.jsx";
-import TermComparison from "./features/TermComparison.jsx";
-import BackupRestoreModal from "./features/BackupRestoreModal.jsx";
 import { addNotification } from "./lib/notifications.js";
+
+// Lazy-loaded on-demand feature modules
+const TutorFormScreen = lazy(() =>
+  import("./features/TutorFormScreen.jsx").then((m) => ({ default: m.TutorFormScreen }))
+);
+const TermComparison = lazy(() => import("./features/TermComparison.jsx"));
+const UserManagementModal = lazy(() => import("./features/UserManagementModal.jsx"));
+const BackupRestoreModal = lazy(() => import("./features/BackupRestoreModal.jsx"));
 import {
   LECTURER_CLASS_LIMIT,
   buildAutoPilotPlotting,
@@ -2560,7 +2560,97 @@ const { Dashboard, Lecturers } = createDirectoryFeatures({
   upsertRows,
 });
 
-const Plotting = createPlottingComponent({
+function TabLoadingSkeleton({ tab = "modul" }) {
+  const tabNames = {
+    plotting: "Plotting Kelas & Penugasan Dosen",
+    approvals: "Persetujuan & Verifikasi Pengajuan Tutor",
+    courses: "Katalog Mata Kuliah",
+    terms: "Manajemen Semester",
+    comparison: "Analisis & Perbandingan Antar-Semester",
+    audit: "Riwayat Log Aktivitas Sistem",
+  };
+  const title = tabNames[tab] || (typeof tab === "string" ? tab : "Modul");
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="w-full space-y-6 py-4"
+    >
+      {/* Top Banner Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white/80 border border-slate-200/80 shadow-xs backdrop-blur-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-200/60 flex items-center justify-center shrink-0">
+            <svg
+              className="h-5 w-5 text-[#005baa] animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-[#003870]">
+              Memuat {title}...
+            </h4>
+            <p className="text-xs text-slate-500 font-medium">
+              Menyiapkan modul dan data antarmuka Program Studi FKIP UT.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-24 rounded-xl bg-slate-200/70 animate-pulse" />
+          <div className="h-8 w-28 rounded-xl bg-slate-200/70 animate-pulse" />
+        </div>
+      </div>
+
+      {/* KPI Cards Skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="p-4 sm:p-5 rounded-2xl bg-white/80 border border-slate-200/60 shadow-xs space-y-2.5 animate-pulse"
+          >
+            <div className="h-3 w-1/2 rounded-md bg-slate-200" />
+            <div className="h-7 w-3/4 rounded-lg bg-blue-100/60" />
+            <div className="h-2.5 w-1/3 rounded-md bg-slate-100" />
+          </div>
+        ))}
+      </div>
+
+      {/* Main Table / Grid Skeleton */}
+      <div className="rounded-3xl bg-white/80 border border-slate-200/80 shadow-xs p-6 space-y-4">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="h-5 w-48 rounded-md bg-slate-200 animate-pulse" />
+          <div className="h-8 w-32 rounded-xl bg-slate-200 animate-pulse" />
+        </div>
+        {[1, 2, 3, 4, 5].map((row) => (
+          <div key={row} className="flex items-center justify-between gap-4 py-2">
+            <div className="h-4 w-1/4 rounded bg-slate-100 animate-pulse" />
+            <div className="h-4 w-1/5 rounded bg-slate-100 animate-pulse" />
+            <div className="h-4 w-1/6 rounded bg-slate-100 animate-pulse" />
+            <div className="h-4 w-1/8 rounded bg-slate-100 animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const plottingDeps = {
   Badge,
   Button,
   Card,
@@ -2600,9 +2690,15 @@ const Plotting = createPlottingComponent({
   rowsToObjects,
   swapAssignmentSlots,
   toClassCount,
-});
+};
 
-const { Courses, Terms } = createCatalogFeatures({
+const LazyPlotting = lazy(() =>
+  import("./features/Plotting.jsx").then((m) => ({
+    default: m.createPlottingComponent(plottingDeps),
+  }))
+);
+
+const catalogDeps = {
   Button,
   Card,
   DeleteConfirmation,
@@ -2613,22 +2709,52 @@ const { Courses, Terms } = createCatalogFeatures({
   SelectBox,
   TextInput,
   includes,
-});
+};
 
-const Approvals = createApprovalsFeature({
+let cachedCatalogPromise = null;
+const loadCatalogFeatures = () => {
+  if (!cachedCatalogPromise) {
+    cachedCatalogPromise = import("./features/CatalogFeatures.jsx").then((m) =>
+      m.createCatalogFeatures(catalogDeps)
+    );
+  }
+  return cachedCatalogPromise;
+};
+
+const LazyCourses = lazy(() =>
+  loadCatalogFeatures().then((c) => ({ default: c.Courses }))
+);
+
+const LazyTerms = lazy(() =>
+  loadCatalogFeatures().then((c) => ({ default: c.Terms }))
+);
+
+const approvalsDeps = {
   Badge,
   Button,
   Card,
   Icons,
   courseTitleByCode,
-});
+};
 
-const AuditLogViewer = createAuditLogViewer({
+const LazyApprovals = lazy(() =>
+  import("./features/ApprovalsFeature.jsx").then((m) => ({
+    default: m.createApprovalsFeature(approvalsDeps),
+  }))
+);
+
+const auditLogDeps = {
   Button,
   Card,
   Icons,
   TextInput,
-});
+};
+
+const LazyAuditLogViewer = lazy(() =>
+  import("./features/AuditLogViewer.jsx").then((m) => ({
+    default: m.createAuditLogViewer(auditLogDeps),
+  }))
+);
 
 const INITIAL_SUBMISSIONS = [
   {
@@ -2968,7 +3094,6 @@ export default function App() {
     mode: IS_SUPABASE_CONFIGURED ? "cloud" : "local",
   });
   const [showSwitchModal, setShowSwitchModal] = useState(false);
-  const prevOnlineRef = useRef(isOnline);
 
   useEffect(() => {
     if (!realtimeToast) return;
@@ -3102,26 +3227,35 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (prevOnlineRef.current !== isOnline) {
-      if (isOnline) {
-        setNetworkToast({
-          type: "online",
-          message: "Koneksi internet kembali terhubung. Memeriksa sinkronisasi...",
-        });
-        if (userEmail && !isDemoSession) {
-          setSyncWakeSignal((v) => v + 1);
-        }
-      } else {
-        setNetworkToast({
-          type: "offline",
-          message: "Koneksi internet terputus. Mode offline aktif (perubahan tersimpan lokal).",
-        });
+    const handleOnline = () => {
+      setNetworkToast({
+        type: "online",
+        message: "Koneksi internet kembali terhubung. Memeriksa sinkronisasi...",
+      });
+      if (userEmail && !isDemoSession) {
+        setSyncWakeSignal((v) => v + 1);
       }
-      prevOnlineRef.current = isOnline;
-      const timer = setTimeout(() => setNetworkToast(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, userEmail, isDemoSession]);
+    };
+    const handleOffline = () => {
+      setNetworkToast({
+        type: "offline",
+        message: "Koneksi internet terputus. Mode offline aktif (perubahan tersimpan lokal).",
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [userEmail, isDemoSession]);
+
+  useEffect(() => {
+    if (!networkToast) return;
+    const timer = setTimeout(() => setNetworkToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [networkToast]);
   const hydratedRef = useRef(false);
   const syncingRef = useRef(false);
   const syncPayloadRef = useRef(null);
@@ -3461,58 +3595,62 @@ export default function App() {
     );
     if (!approved.length) return;
 
-    setLecturers((prev) => {
-      const next = mergeApprovedSubmissionsIntoLecturers(prev, approved).filter(
-        (l) => !deletedIds.has(l.id),
-      );
-      const isSame =
-        next.length === prev.length &&
-        next.every(
-          (l, i) =>
-            l.id === prev[i]?.id &&
-            l.name === prev[i]?.name &&
-            l.available === prev[i]?.available &&
-            l.rating === prev[i]?.rating &&
-            (l.plotted || []).join(",") === (prev[i]?.plotted || []).join(","),
+    const timer = window.setTimeout(() => {
+      setLecturers((prev) => {
+        const next = mergeApprovedSubmissionsIntoLecturers(prev, approved).filter(
+          (l) => !deletedIds.has(l.id),
         );
-      if (isSame) return prev;
-      try {
-        localStorage.setItem(
-          STORED_CUSTOM_LECTURERS_KEY,
-          JSON.stringify(next),
-        );
-      } catch (err) {
-        void err;
-      }
-      return next;
-    });
+        const isSame =
+          next.length === prev.length &&
+          next.every(
+            (l, i) =>
+              l.id === prev[i]?.id &&
+              l.name === prev[i]?.name &&
+              l.available === prev[i]?.available &&
+              l.rating === prev[i]?.rating &&
+              (l.plotted || []).join(",") === (prev[i]?.plotted || []).join(","),
+          );
+        if (isSame) return prev;
+        try {
+          localStorage.setItem(
+            STORED_CUSTOM_LECTURERS_KEY,
+            JSON.stringify(next),
+          );
+        } catch (err) {
+          void err;
+        }
+        return next;
+      });
 
-    setTermPlottings((prev) => {
-      const termList = terms.length ? terms : DEMO_TERMS;
-      const next = mergeApprovedSubmissionsIntoTermPlottings(
-        prev,
-        approved,
-        termList,
-      ).filter((tp) => !deletedIds.has(tp.lecturer_id));
-      const isSame =
-        next.length === prev.length &&
-        next.every(
-          (p, i) =>
-            p.id === prev[i]?.id &&
-            p.available === prev[i]?.available &&
-            (p.plotted || []).join(",") === (prev[i]?.plotted || []).join(","),
-        );
-      if (isSame) return prev;
-      try {
-        localStorage.setItem(
-          STORED_CUSTOM_PLOTTINGS_KEY,
-          JSON.stringify(next),
-        );
-      } catch (err) {
-        void err;
-      }
-      return next;
-    });
+      setTermPlottings((prev) => {
+        const termList = terms.length ? terms : DEMO_TERMS;
+        const next = mergeApprovedSubmissionsIntoTermPlottings(
+          prev,
+          approved,
+          termList,
+        ).filter((tp) => !deletedIds.has(tp.lecturer_id));
+        const isSame =
+          next.length === prev.length &&
+          next.every(
+            (p, i) =>
+              p.id === prev[i]?.id &&
+              p.available === prev[i]?.available &&
+              (p.plotted || []).join(",") === (prev[i]?.plotted || []).join(","),
+          );
+        if (isSame) return prev;
+        try {
+          localStorage.setItem(
+            STORED_CUSTOM_PLOTTINGS_KEY,
+            JSON.stringify(next),
+          );
+        } catch (err) {
+          void err;
+        }
+        return next;
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [submissions, terms]);
 
   useEffect(() => {
@@ -4065,13 +4203,13 @@ export default function App() {
 
   const Page = {
     dashboard: Dashboard,
-    approvals: Approvals,
+    approvals: LazyApprovals,
     lecturers: Lecturers,
-    plotting: Plotting,
-    courses: Courses,
-    terms: Terms,
+    plotting: LazyPlotting,
+    courses: LazyCourses,
+    terms: LazyTerms,
     comparison: TermComparison,
-    audit: AuditLogViewer,
+    audit: LazyAuditLogViewer,
   }[active];
   const termScopedLecturers = useMemo(
     () =>
@@ -4799,13 +4937,15 @@ export default function App() {
     );
   if (entryMode === "tutor-form")
     return (
-      <TutorFormScreen
-        courses={courses.length ? courses : DEMO_COURSES}
-        terms={terms.length ? terms : DEMO_TERMS}
-        onRegisterTutor={handleRegisterTutor}
-        onBack={() => setEntryMode("landing")}
-        onGoToDashboard={() => setEntryMode("login")}
-      />
+      <Suspense fallback={<TabLoadingSkeleton tab="Formulir Pendaftaran Tutor" />}>
+        <TutorFormScreen
+          courses={courses.length ? courses : DEMO_COURSES}
+          terms={terms.length ? terms : DEMO_TERMS}
+          onRegisterTutor={handleRegisterTutor}
+          onBack={() => setEntryMode("landing")}
+          onGoToDashboard={() => setEntryMode("login")}
+        />
+      </Suspense>
     );
   if (entryMode === "public")
     return (
@@ -4901,7 +5041,9 @@ export default function App() {
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <ErrorBoundary>
-              <Page {...props} />
+              <Suspense fallback={<TabLoadingSkeleton tab={active} />}>
+                <Page {...props} />
+              </Suspense>
             </ErrorBoundary>
           </motion.div>
         </div>
@@ -4977,25 +5119,29 @@ export default function App() {
       />
 
       {/* User Management Modal for Super Admin */}
-      <UserManagementModal
-        isOpen={showUserManagementModal}
-        onClose={() => setShowUserManagementModal(false)}
-        currentUserEmail={userEmail}
-      />
+      <Suspense fallback={null}>
+        <UserManagementModal
+          isOpen={showUserManagementModal}
+          onClose={() => setShowUserManagementModal(false)}
+          currentUserEmail={userEmail}
+        />
+      </Suspense>
 
       {/* Data Backup & Restore Modal */}
-      <BackupRestoreModal
-        isOpen={showBackupModal}
-        onClose={() => setShowBackupModal(false)}
-        lecturers={lecturers}
-        courses={courses}
-        terms={terms}
-        termPlottings={validTermPlottings}
-        courseClassPlans={courseClassPlans}
-        userEmail={userEmail}
-        selectedTermCode={effectiveSelectedTermCode}
-        onApplyRestore={handleApplyRestore}
-      />
+      <Suspense fallback={null}>
+        <BackupRestoreModal
+          isOpen={showBackupModal}
+          onClose={() => setShowBackupModal(false)}
+          lecturers={lecturers}
+          courses={courses}
+          terms={terms}
+          termPlottings={validTermPlottings}
+          courseClassPlans={courseClassPlans}
+          userEmail={userEmail}
+          selectedTermCode={effectiveSelectedTermCode}
+          onApplyRestore={handleApplyRestore}
+        />
+      </Suspense>
 
       {/* Floating Accessibility Widget & Global Keyboard Shortcuts */}
       <AccessibilityWidget onNavigate={setActive} activeTab={active} />

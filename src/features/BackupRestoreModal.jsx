@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   buildBackupData,
   downloadBackupFile,
@@ -12,8 +12,7 @@ import {
  * BackupRestoreModal Component
  * Provides complete data backup, local snapshot management, and restore capabilities.
  */
-export default function BackupRestoreModal({
-  isOpen,
+function BackupRestoreDialog({
   onClose,
   lecturers = [],
   courses = [],
@@ -30,7 +29,7 @@ export default function BackupRestoreModal({
   const [downloadSuccessMessage, setDownloadSuccessMessage] = useState("");
 
   // Snapshot states
-  const [snapshots, setSnapshots] = useState([]);
+  const [snapshots, setSnapshots] = useState(() => listSavedSnapshots());
   const [snapshotSuccessMessage, setSnapshotSuccessMessage] = useState("");
 
   // Restore states
@@ -40,20 +39,6 @@ export default function BackupRestoreModal({
   const [confirmedRisk, setConfirmedRisk] = useState(false);
   const [restoreBusy, setRestoreBusy] = useState(false);
   const [restoreError, setRestoreError] = useState("");
-
-  useEffect(() => {
-    if (isOpen) {
-      setSnapshots(listSavedSnapshots());
-      setDownloadSuccessMessage("");
-      setSnapshotSuccessMessage("");
-      setValidationResult(null);
-      setRestoreFile(null);
-      setConfirmedRisk(false);
-      setRestoreError("");
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   // 1. Handle Backup Download
   const handleDownloadBackup = () => {
@@ -598,4 +583,9 @@ export default function BackupRestoreModal({
       </div>
     </div>
   );
+}
+
+export default function BackupRestoreModal(props) {
+  if (!props.isOpen) return null;
+  return <BackupRestoreDialog {...props} />;
 }

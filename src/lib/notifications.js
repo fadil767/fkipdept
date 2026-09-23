@@ -111,7 +111,9 @@ export function addNotification({
       action: "ADD",
       notification: newNotif,
     });
-  } catch {}
+  } catch {
+    /* ignore broadcast failure */
+  }
 
   return newNotif;
 }
@@ -125,7 +127,9 @@ export function markAsRead(id) {
   const updated = current.map((n) => (n.id === id ? { ...n, read: true } : n));
   try {
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch {
+    /* ignore storage failure */
+  }
   emitChange();
 }
 
@@ -137,7 +141,9 @@ export function markAllAsRead() {
   const updated = current.map((n) => ({ ...n, read: true }));
   try {
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch {
+    /* ignore storage failure */
+  }
   emitChange();
 }
 
@@ -150,7 +156,9 @@ export function deleteNotification(id) {
   const updated = current.filter((n) => n.id !== id);
   try {
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch {
+    /* ignore storage failure */
+  }
   emitChange();
 }
 
@@ -160,7 +168,9 @@ export function deleteNotification(id) {
 export function clearAllNotifications() {
   try {
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify([]));
-  } catch {}
+  } catch {
+    /* ignore storage failure */
+  }
   emitChange();
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   fetchAllUserRoles,
   saveUserRole,
@@ -8,8 +8,7 @@ import {
 } from "../lib/rbac.js";
 import { logAction } from "../lib/auditLog.js";
 
-export default function UserManagementModal({
-  isOpen,
+function UserManagementDialog({
   onClose,
   currentUserEmail = "",
 }) {
@@ -38,16 +37,22 @@ export default function UserManagementModal({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      loadUsers();
-      setSuccess("");
-      setError("");
-      setEditingEmail(null);
-      setFormEmail("");
-      setFormName("");
-      setFormRole(ROLES.ADMIN);
-    }
-  }, [isOpen]);
+    let active = true;
+    fetchAllUserRoles()
+      .then((data) => {
+        if (active) setUsers(data);
+      })
+      .catch((err) => {
+        if (active) setError("Gagal memuat daftar pengguna: " + err.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,8 +128,6 @@ export default function UserManagementModal({
       setError("Gagal menghapus: " + err.message);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div
@@ -377,3 +380,9 @@ export default function UserManagementModal({
     </div>
   );
 }
+
+export default function UserManagementModal(props) {
+  if (!props.isOpen) return null;
+  return <UserManagementDialog {...props} />;
+}
+

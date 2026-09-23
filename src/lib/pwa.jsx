@@ -62,11 +62,6 @@ export function usePWA() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (window.electronAPI?.isElectron) {
-      setIsDesktopApp(true);
-      setIsInstalled(true);
-    }
-
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 

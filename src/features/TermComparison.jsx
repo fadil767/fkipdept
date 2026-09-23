@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,8 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  Cell,
 } from "recharts";
 
 /**
@@ -66,13 +64,13 @@ export default function TermComparison({
     return map;
   }, [courses]);
 
-  const getCourseSks = (courseCode) => {
+  const getCourseSks = useCallback((courseCode) => {
     const found = courseMap.get(courseCode);
     return found?.sks ? Number(found.sks) : 3; // Default to 3 SKS if unspecified
-  };
+  }, [courseMap]);
 
   // Helper to extract plotted records for a given term
-  const getTermData = (termCode) => {
+  const getTermData = useCallback((termCode) => {
     const plottings = termPlottings.filter((tp) => tp.term_code === termCode);
     const lecturerMap = new Map();
 
@@ -121,10 +119,10 @@ export default function TermComparison({
       avgSks: activeList.length ? (totalSks / activeList.length).toFixed(1) : "0",
       lecturerMap,
     };
-  };
+  }, [allLecturers, getCourseSks, termPlottings]);
 
-  const dataA = useMemo(() => getTermData(termACode), [termACode, termPlottings, allLecturers, courseMap]);
-  const dataB = useMemo(() => getTermData(termBCode), [termBCode, termPlottings, allLecturers, courseMap]);
+  const dataA = useMemo(() => getTermData(termACode), [getTermData, termACode]);
+  const dataB = useMemo(() => getTermData(termBCode), [getTermData, termBCode]);
 
   // Comparative calculations
   const comparisonResults = useMemo(() => {

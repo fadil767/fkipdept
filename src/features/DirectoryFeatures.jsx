@@ -1603,7 +1603,7 @@ export function createDirectoryFeatures(deps) {
     );
   }
 
-  function LecturerInfoCard({ lecturer, courses, onRatingChange }) {
+  function LecturerInfoCard({ lecturer, courses, onRatingChange, selectedTermCode = "2026-1" }) {
     const hasContact = Boolean(lecturer.email || lecturer.phone);
     const totalSksLecturer = (lecturer.plotted || []).reduce((sum, code) => {
       const found = courses.find((c) => c.code === code || c.id === code);
@@ -3644,6 +3644,7 @@ export function createDirectoryFeatures(deps) {
             <LecturerInfoCard
               lecturer={viewing}
               courses={courses}
+              selectedTermCode={selectedTermCode}
               onRatingChange={(rating) => rateLecturer(viewing.id, rating)}
             />
           </Modal>

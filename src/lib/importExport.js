@@ -391,7 +391,7 @@ export function createImportExportTools(deps) {
             const cellRef = `${columnName(colIndex)}${rowNum}`;
             const value = row[header];
 
-            let s = 3;
+            let s;
             if (isColCentered(header)) {
               s = isZebra ? 6 : 4;
             } else if (isColWrapped(header)) {

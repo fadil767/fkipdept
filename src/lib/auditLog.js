@@ -5,8 +5,6 @@
  * Uses Supabase REST API when available, falls back to localStorage.
  */
 
-import { getSupabaseClient } from "./realtime";
-
 const LOCAL_AUDIT_KEY = "ut_fkip_audit_logs";
 const LOCAL_AUDIT_LIMIT = 500;
 const BATCH_FLUSH_INTERVAL_MS = 2_000;

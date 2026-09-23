@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 const RECENT_ACCOUNTS_KEY = "ut_recent_accounts_v1";
 const SAVED_CREDENTIALS_KEY = "ut_saved_login_credentials_v1";
@@ -62,8 +62,7 @@ function getStoredSavedCredentials() {
   }
 }
 
-export default function SwitchAccountModal({
-  isOpen,
+function SwitchAccountDialog({
   onClose,
   currentUserEmail,
   isDemoSession,
@@ -72,7 +71,7 @@ export default function SwitchAccountModal({
   onSwitchToCloud,
   onLogoutAndLoginMode,
 }) {
-  const [recentAccounts, setRecentAccounts] = useState([]);
+  const [recentAccounts, setRecentAccounts] = useState(() => getStoredRecentAccounts());
   const [showNewAccountForm, setShowNewAccountForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -83,27 +82,16 @@ export default function SwitchAccountModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Refresh recent accounts on open
-  useEffect(() => {
-    if (isOpen) {
-      setRecentAccounts(getStoredRecentAccounts());
-      setErrorMsg("");
-      setShowNewAccountForm(false);
-      setInlinePasswordEmail("");
-      setInlinePassword("");
-    }
-  }, [isOpen]);
-
   // Handle ESC key to close
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
         onClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
   // Known default accounts list (Cloud Admin & Demo)
   const defaultAccounts = useMemo(() => {
@@ -149,8 +137,6 @@ export default function SwitchAccountModal({
 
     return list;
   }, [defaultAccounts, recentAccounts]);
-
-  if (!isOpen) return null;
 
   const handleSelectAccount = async (targetAccount) => {
     setErrorMsg("");
@@ -661,3 +647,9 @@ export default function SwitchAccountModal({
     </div>
   );
 }
+
+export default function SwitchAccountModal(props) {
+  if (!props.isOpen) return null;
+  return <SwitchAccountDialog {...props} />;
+}
+
