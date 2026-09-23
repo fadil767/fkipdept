@@ -1,0 +1,12 @@
+# Vercel Ignore
+node_modules
+dist
+dist-ssr
+release
+build
+electron
+.git
+.vscode
+.agent/skills/canvas-design/canvas-fonts/*.ttf
+*.exe
+*.log
