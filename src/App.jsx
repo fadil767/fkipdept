@@ -349,98 +349,98 @@ const DEMO_COURSES = [
 const DEMO_LECTURERS = [
   {
     id: "FKIP001",
-    degree: "Prof. Dr.",
-    name: "Prof. Dr. Hendra Setiawan, M.Pd.",
-    email: "hendra.setiawan@fkip.ut.ac.id",
-    phone: "0812-1100-2001",
-    expertise: ["Strategi Pembelajaran di SD", "Penelitian Tindakan Kelas (PTK)", "Kurikulum & Pembelajaran"],
-    plotted: ["PDGK4105", "IDIK4008"],
-    available: 2,
+    degree: "Dr.",
+    name: "Dr. Rina Sulistiyowati, M.Pd.",
+    email: "rina.sulistiyowati@ecampus.ut.ac.id",
+    phone: "0812-8899-7711",
+    expertise: ["Strategi Pembelajaran di SD", "Evaluasi Pembelajaran"],
+    plotted: ["PDGK4105", "PDGK4301"],
+    available: 0,
     rating: 5,
-    warning_note: "",
+    warning_note: "Koordinator Mata Kuliah PDGK4105",
   },
   {
     id: "FKIP002",
-    degree: "M.Pd.",
-    name: "Dian Kartika Putri, S.Pd., M.Pd.",
-    email: "dian.kartika@fkip.ut.ac.id",
-    phone: "0812-1100-2002",
-    expertise: ["Evaluasi Pembelajaran", "Profesi Keguruan"],
-    plotted: ["MKDK4005", "PDGK4301"],
-    available: 2,
-    rating: 4,
-    warning_note: "",
+    degree: "Prof. Dr.",
+    name: "Prof. Dr. Hendra Gunawan, M.Ed.",
+    email: "hendra.gunawan@ecampus.ut.ac.id",
+    phone: "0813-1122-3344",
+    expertise: ["Kurikulum & Teknologi Pendidikan", "Profesi Keguruan"],
+    plotted: ["MKDK4001", "MKDK4005"],
+    available: 0,
+    rating: 5,
+    warning_note: "Guru Besar Teknologi Pendidikan",
   },
   {
     id: "FKIP003",
-    degree: "M.Ed.",
-    name: "Bambang Prasetyo, M.Ed., Ph.D.",
-    email: "bambang.prasetyo@fkip.ut.ac.id",
-    phone: "0812-1100-2003",
-    expertise: ["Pembelajaran Terpadu di SD", "Media & Teknologi Pembelajaran"],
-    plotted: ["PDGK4205", "MKDK4001"],
-    available: 2,
+    degree: "M.Pd.",
+    name: "Siti Nurhaliza, S.Pd., M.Pd.",
+    email: "siti.nurhaliza@ecampus.ut.ac.id",
+    phone: "0857-2233-4455",
+    expertise: ["Perkembangan Peserta Didik", "Pembelajaran Terpadu di SD"],
+    plotted: ["MKDK4002", "PDGK4205"],
+    available: 1,
     rating: 4,
     warning_note: "",
   },
   {
     id: "FKIP004",
     degree: "Dr.",
-    name: "Dr. Hj. Sri Wahyuni, M.Pd.",
-    email: "sri.wahyuni@fkip.ut.ac.id",
-    phone: "0812-1100-2004",
-    expertise: ["Perkembangan Peserta Didik", "Pembelajaran PKn di SD"],
-    plotted: ["MKDK4002", "PDGK4201"],
-    available: 2,
-    rating: 5,
+    name: "Dr. Ahmad Fauzi, M.Pd.",
+    email: "ahmad.fauzi@ecampus.ut.ac.id",
+    phone: "0821-3344-5566",
+    expertise: ["Pembelajaran Matematika SD", "Evaluasi Pembelajaran"],
+    plotted: ["PDGK4108"],
+    available: 1,
+    rating: 4,
     warning_note: "",
   },
   {
     id: "FKIP005",
-    degree: "M.Si.",
-    name: "Rizky Ramadhan, S.Pd., M.Si.",
-    email: "rizky.ramadhan@fkip.ut.ac.id",
-    phone: "0812-1100-2005",
-    expertise: ["Pendidikan Matematika", "Evaluasi Pembelajaran"],
-    plotted: ["PDGK4108", "PDGK4301"],
+    degree: "M.Pd.",
+    name: "Dewi Lestari, S.Pd., M.Pd.",
+    email: "dewi.lestari@ecampus.ut.ac.id",
+    phone: "0878-4455-6677",
+    expertise: ["Pendidikan Bahasa dan Sastra Indonesia", "Strategi Pembelajaran di SD"],
+    plotted: ["PDGK4101"],
     available: 2,
-    rating: 4,
+    rating: 5,
     warning_note: "",
   },
   {
     id: "FKIP006",
-    degree: "M.Pd.",
-    name: "Anita Rahmawati, S.Pd., M.Pd.",
-    email: "anita.rahmawati@fkip.ut.ac.id",
-    phone: "0812-1100-2006",
-    expertise: ["Keterampilan Berbahasa Indonesia SD", "Strategi Pembelajaran di SD"],
-    plotted: ["PDGK4101", "PDGK4105"],
-    available: 2,
+    degree: "M.Ed.",
+    name: "Budi Santoso, S.Pd., M.Ed.",
+    email: "budi.santoso@ecampus.ut.ac.id",
+    phone: "0819-5566-7788",
+    expertise: ["Pembelajaran PKn di SD", "Profesi Keguruan"],
+    plotted: ["PDGK4201"],
+    available: 1,
     rating: 3,
-    warning_note: "Perlu konfirmasi jadwal tutorial sebelum penambahan kelas.",
+    warning_note: "Perlu konfirmasi jadwal tutorial tatap muka/web.",
   },
   {
     id: "FKIP007",
-    degree: "M.Pd.",
-    name: "Ahmad Fauzi, S.Pd., M.Pd.",
-    email: "ahmad.fauzi@fkip.ut.ac.id",
-    phone: "0812-1100-2007",
-    expertise: ["Profesi Keguruan", "Penelitian Tindakan Kelas (PTK)"],
-    plotted: ["MKDK4005", "IDIK4008"],
-    available: 2,
-    rating: 4,
-    warning_note: "",
+    degree: "Dr.",
+    name: "Dr. Eka Pratama, M.Pd.",
+    email: "eka.pratama@ecampus.ut.ac.id",
+    phone: "0812-6677-8899",
+    expertise: ["Penelitian Tindakan Kelas (PTK)", "Evaluasi Pembelajaran"],
+    plotted: ["IDIK4008"],
+    available: 1,
+    rating: 5,
+    warning_note: "Fasilitator Workshop PTK Nasional",
   },
   {
     id: "FKIP008",
-    degree: "M.Ed.",
-    name: "Maya Anggraini, S.Pd., M.Ed.",
-    email: "maya.anggraini@fkip.ut.ac.id",
-    phone: "0812-1100-2008",
-    expertise: ["Pembelajaran Terpadu di SD", "Pengantar Pendidikan"],
-    plotted: ["MKDK4001", "PDGK4205"],
-    available: 2,
-    rating: 5,
+    degree: "M.Pd.",
+    name: "Tri Wahyuni, S.Pd., M.Pd.",
+    email: "tri.wahyuni@ecampus.ut.ac.id",
+    phone: "0852-7788-9900",
+    expertise: ["Strategi Pembelajaran di SD", "Pembelajaran Terpadu di SD"],
+    plotted: ["PDGK4205"],
+    available: 1,
+    rating: 4,
     warning_note: "",
   },
 ];
@@ -470,17 +470,17 @@ const DEMO_TERM_PLOTTINGS = DEMO_LECTURERS.map((lecturer) =>
   }),
   buildDemoTermPlotting("DEMO-2025-2", {
     ...DEMO_LECTURERS[1],
-    plotted: ["PDGK4301"],
+    plotted: ["MKDK4001"],
     available: 3,
   }),
   buildDemoTermPlotting("DEMO-2025-2", {
     ...DEMO_LECTURERS[2],
-    plotted: ["PDGK4205"],
+    plotted: ["MKDK4002"],
     available: 3,
   }),
   buildDemoTermPlotting("DEMO-2025-2", {
     ...DEMO_LECTURERS[3],
-    plotted: ["MKDK4001"],
+    plotted: ["PDGK4108"],
     available: 3,
   }),
 ]);
@@ -488,36 +488,36 @@ const DEMO_COURSE_CLASS_PLANS = {
   "DEMO-2026-1": {
     counts: {
       MKDK4001: 2,
-      MKDK4002: 1,
+      MKDK4002: 2,
       MKDK4005: 2,
-      PDGK4101: 1,
-      PDGK4105: 2,
-      PDGK4108: 1,
-      PDGK4201: 1,
+      PDGK4101: 2,
+      PDGK4105: 3,
+      PDGK4108: 2,
+      PDGK4201: 2,
       PDGK4205: 2,
       PDGK4301: 2,
       IDIK4008: 2,
     },
     assignments: {
-      MKDK4001: ["FKIP003", "FKIP008"],
-      MKDK4002: ["FKIP004"],
-      MKDK4005: ["FKIP002", "FKIP007"],
-      PDGK4101: ["FKIP006"],
-      PDGK4105: ["FKIP001", "FKIP006"],
-      PDGK4108: ["FKIP005"],
-      PDGK4201: ["FKIP004"],
+      MKDK4001: ["FKIP002"],
+      MKDK4002: ["FKIP003"],
+      MKDK4005: ["FKIP002"],
+      PDGK4101: ["FKIP005"],
+      PDGK4105: ["FKIP001"],
+      PDGK4108: ["FKIP004"],
+      PDGK4201: ["FKIP006"],
       PDGK4205: ["FKIP003", "FKIP008"],
-      PDGK4301: ["FKIP002", "FKIP005"],
-      IDIK4008: ["FKIP001", "FKIP007"],
+      PDGK4301: ["FKIP001"],
+      IDIK4008: ["FKIP007"],
     },
   },
   "DEMO-2025-2": {
     counts: { MKDK4001: 1, PDGK4105: 1, PDGK4205: 1, PDGK4301: 1 },
     assignments: {
-      MKDK4001: ["FKIP003"],
+      MKDK4001: ["FKIP002"],
       PDGK4105: ["FKIP001"],
       PDGK4205: ["FKIP003"],
-      PDGK4301: ["FKIP002"],
+      PDGK4301: ["FKIP001"],
     },
   },
 };
@@ -2614,12 +2614,12 @@ const AuditLogViewer = createAuditLogViewer({
 const INITIAL_SUBMISSIONS = [
   {
     id: "FKIP009",
-    degree: "M.Pd.",
-    name: "Dra. Rina Sulistiyowati, M.Pd.",
-    email: "rina.sulistiyowati@ecampus.ut.ac.id",
-    phone: "0812-8899-7711",
-    expertise: ["Strategi Pembelajaran di SD", "Evaluasi Pembelajaran"],
-    plotted: ["PDGK4105", "PDGK4301"],
+    degree: "Dr.",
+    name: "Dr. Ratna Dewi Sartika, M.Pd.",
+    email: "ratna.dewi@ecampus.ut.ac.id",
+    phone: "0812-7788-9900",
+    expertise: ["Pendidikan Anak Usia Dini", "Perkembangan Peserta Didik"],
+    plotted: ["MKDK4002"],
     available: 2,
     warning_note: "Bersedia mengampu tutorial online (Tuweb) hari Sabtu.",
     status: "pending",
@@ -3126,14 +3126,123 @@ export default function App() {
   const setEntryMode = useCallback((entryMode) => {
     setSession((prev) => ({ ...prev, entryMode }));
   }, []);
-  const applyDatabaseSnapshot = useCallback((snapshot, labelChanges = {}) => {
-    setLecturers(
-      applyLecturerLabelChanges(snapshot.lecturers, labelChanges),
-    );
-    setCourses(snapshot.courses);
-    setTerms(snapshot.terms);
-    setTermPlottings(snapshot.termPlottings);
-  }, []);
+  const JUNK_LECTURER_ID_SET = useMemo(
+    () =>
+      new Set([
+        "0200056123",
+        "020005090",
+        "02000598",
+        "0200078492",
+        "0200894823",
+        "02000894",
+        "FKIP626",
+        "FKIP266",
+        "FKIP009",
+        "DOS-FKIP-004",
+      ]),
+    [],
+  );
+
+  const isJunkLecturer = useCallback(
+    (l) => {
+      if (!l) return true;
+      const id = String(l.id || "").trim();
+      if (JUNK_LECTURER_ID_SET.has(id)) return true;
+      if (/^0200/i.test(id)) return true;
+      const name = String(l.name || "").toLowerCase();
+      if (
+        [
+          "jokowi",
+          "habib",
+          "sihabuddin",
+          "yahya fadillah",
+          "sulaiman",
+          "wafiddin",
+          "raihan",
+        ].some((term) => name.includes(term))
+      ) {
+        return true;
+      }
+      if (name === "rina" && id !== "FKIP001") return true;
+      return false;
+    },
+    [JUNK_LECTURER_ID_SET],
+  );
+
+  const sanitizeDatabaseSnapshot = useCallback(
+    (snapshot) => {
+      if (!snapshot) return snapshot;
+      const validLecturers = (snapshot.lecturers || [])
+        .filter((l) => !isJunkLecturer(l))
+        .map((l) => ({
+          ...l,
+          plotted: Array.from(new Set(Array.isArray(l.plotted) ? l.plotted : [])),
+        }));
+      const validIds = new Set(validLecturers.map((l) => l.id));
+      const validPlottings = (snapshot.termPlottings || [])
+        .filter(
+          (tp) =>
+            validIds.has(tp.lecturer_id) &&
+            !isJunkLecturer({ id: tp.lecturer_id }),
+        )
+        .map((tp) => ({
+          ...tp,
+          plotted: Array.from(
+            new Set(Array.isArray(tp.plotted) ? tp.plotted : []),
+          ),
+        }));
+
+      let validPlans = snapshot.courseClassPlans;
+      if (validPlans && typeof validPlans === "object") {
+        validPlans = Object.fromEntries(
+          Object.entries(validPlans).map(([termKey, termPlan]) => {
+            if (!termPlan) return [termKey, termPlan];
+            const assignments = {};
+            const counts = { ...(termPlan.counts || {}) };
+            for (const [code, assigns] of Object.entries(
+              termPlan.assignments || {},
+            )) {
+              const cleanAssigns = Array.isArray(assigns)
+                ? Array.from(
+                    new Set(
+                      assigns.filter(
+                        (id) => validIds.has(id) && !isJunkLecturer({ id }),
+                      ),
+                    ),
+                  )
+                : [];
+              assignments[code] = cleanAssigns;
+              if (counts[code] > 6) {
+                counts[code] = Math.max(cleanAssigns.length, 2);
+              }
+            }
+            return [termKey, { ...termPlan, assignments, counts }];
+          }),
+        );
+      }
+
+      return {
+        ...snapshot,
+        lecturers: validLecturers,
+        termPlottings: validPlottings,
+        courseClassPlans: validPlans,
+      };
+    },
+    [isJunkLecturer],
+  );
+
+  const applyDatabaseSnapshot = useCallback(
+    (rawSnapshot, labelChanges = {}) => {
+      const snapshot = sanitizeDatabaseSnapshot(rawSnapshot);
+      setLecturers(
+        applyLecturerLabelChanges(snapshot.lecturers, labelChanges),
+      );
+      setCourses(snapshot.courses);
+      setTerms(snapshot.terms);
+      setTermPlottings(snapshot.termPlottings);
+    },
+    [sanitizeDatabaseSnapshot],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -3220,18 +3329,21 @@ export default function App() {
         const pendingSync = getStoredPendingSync(userEmail);
         const lecturerLabelChanges = getStoredLecturerLabelChanges(userEmail);
         setPendingLecturerLabelChanges(lecturerLabelChanges);
+        const sanitizedSnapshot = sanitizeDatabaseSnapshot(snapshot);
         if (pendingSync?.payload) {
-          const restoredSnapshot = restorePendingSnapshot(
-            snapshot,
-            pendingSync.payload,
+          const restoredSnapshot = sanitizeDatabaseSnapshot(
+            restorePendingSnapshot(
+              sanitizedSnapshot,
+              pendingSync.payload,
+            ),
           );
           applyDatabaseSnapshot(restoredSnapshot, lecturerLabelChanges);
           setCourseClassPlans(restoredSnapshot.courseClassPlans);
         } else {
-          applyDatabaseSnapshot(snapshot, lecturerLabelChanges);
+          applyDatabaseSnapshot(sanitizedSnapshot, lecturerLabelChanges);
           setCourseClassPlans(
-            snapshot.courseClassPlansSupported
-              ? snapshot.courseClassPlans
+            sanitizedSnapshot.courseClassPlansSupported
+              ? sanitizedSnapshot.courseClassPlans
               : getStoredCourseClassPlans(),
           );
         }
