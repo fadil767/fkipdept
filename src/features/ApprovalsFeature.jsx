@@ -17,6 +17,8 @@ export function createApprovalsFeature({
     onRejectSubmission,
     onDeleteSubmission,
     onSyncApprovedToDirectory,
+    canEdit = true,
+    readOnly = false,
   }) {
     const [filterStatus, setFilterStatus] = useState("pending");
     const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +26,9 @@ export function createApprovalsFeature({
     const [rejectionReason, setRejectionReason] = useState("");
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [syncToast, setSyncToast] = useState("");
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [bulkRejectModalOpen, setBulkRejectModalOpen] = useState(false);
+    const [bulkRejectReason, setBulkRejectReason] = useState("");
 
     const pendingCount = submissions.filter((s) => s.status === "pending").length;
     const approvedCount = submissions.filter((s) => s.status === "approved").length;
@@ -54,6 +59,74 @@ export function createApprovalsFeature({
       }
       return true;
     });
+
+    const toggleSelect = (id) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    };
+
+    const isAllSelected =
+      filteredSubmissions.length > 0 &&
+      filteredSubmissions.every((s) => selectedIds.has(s.id));
+
+    const toggleSelectAll = () => {
+      if (isAllSelected) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(filteredSubmissions.map((s) => s.id)));
+      }
+    };
+
+    const handleBulkApprove = () => {
+      const targets = submissions.filter((s) => selectedIds.has(s.id));
+      if (!targets.length) return;
+      targets.forEach((sub) => {
+        onApproveSubmission(sub);
+      });
+      const count = targets.length;
+      setSelectedIds(new Set());
+      setSyncToast({
+        text: `Berhasil menyetujui ${count} pengajuan calon tutor dan mensinkronkan ke direktori!`,
+        type: "approved",
+      });
+      setTimeout(() => setSyncToast(""), 7000);
+    };
+
+    const handleBulkReject = () => {
+      const targets = submissions.filter((s) => selectedIds.has(s.id));
+      if (!targets.length) return;
+      targets.forEach((sub) => {
+        onRejectSubmission(sub.id, bulkRejectReason || "Kuota kelas tutorial semester ini telah terpenuhi.");
+      });
+      const count = targets.length;
+      setSelectedIds(new Set());
+      setBulkRejectModalOpen(false);
+      setBulkRejectReason("");
+      setSyncToast({
+        text: `Berhasil menolak ${count} pengajuan calon tutor.`,
+        type: "rejected",
+      });
+      setTimeout(() => setSyncToast(""), 7000);
+    };
+
+    const handleBulkDelete = () => {
+      if (!onDeleteSubmission) return;
+      const targets = Array.from(selectedIds);
+      if (!targets.length) return;
+      if (window.confirm(`Hapus permanen ${targets.length} riwayat pengajuan calon tutor yang dipilih?`)) {
+        targets.forEach((id) => onDeleteSubmission(id));
+        setSelectedIds(new Set());
+        setSyncToast({
+          text: `Berhasil menghapus ${targets.length} pengajuan.`,
+          type: "rejected",
+        });
+        setTimeout(() => setSyncToast(""), 5000);
+      }
+    };
 
     const handleSendWhatsAppNotification = (sub, statusType = "approved") => {
       const rawPhone = String(sub?.phone || "").replace(/\D/g, "");
@@ -126,6 +199,12 @@ export function createApprovalsFeature({
 
     return (
       <div className="space-y-6">
+        {readOnly && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            {Icons.eye && <Icons.eye className="h-4 w-4 text-slate-500 shrink-0" />}
+            <span><strong>Mode Hanya Lihat:</strong> Anda sedang melihat daftar pengajuan calon tutor dalam mode pengamat. Persetujuan, penolakan, dan sinkronisasi data dibatasi untuk peran Administrator.</span>
+          </div>
+        )}
         {/* Metric Cards */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
@@ -233,20 +312,34 @@ export function createApprovalsFeature({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button
-              type="button"
-              onClick={handleSyncAllApproved}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
-              title="Sinkronkan data pengajuan yang disetujui ke Direktori Dosen & Plotting"
-            >
-              <Icons.check className="h-4 w-4" />
-              <span>Sinkronkan ke Direktori</span>
-              {approvedCount > 0 && (
-                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-black">
-                  {approvedCount}
-                </span>
-              )}
-            </button>
+            {!readOnly && canEdit && filteredSubmissions.length > 0 && (
+              <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-2xs select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-slate-300 text-[#005baa] focus:ring-[#005baa]/20 cursor-pointer"
+                />
+                <span>Pilih Semua ({filteredSubmissions.length})</span>
+              </label>
+            )}
+
+            {!readOnly && canEdit && (
+              <button
+                type="button"
+                onClick={handleSyncAllApproved}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                title="Sinkronkan data pengajuan yang disetujui ke Direktori Dosen & Plotting"
+              >
+                <Icons.check className="h-4 w-4" />
+                <span>Sinkronkan ke Direktori</span>
+                {approvedCount > 0 && (
+                  <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-black">
+                    {approvedCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             <div className="relative w-full sm:w-64">
               <input
@@ -345,7 +438,16 @@ export function createApprovalsFeature({
                   >
                     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
                       {/* Left: Tutor Main Info */}
-                      <div className="flex items-start gap-3.5 sm:max-w-xl">
+                      <div className="flex items-start gap-3 sm:max-w-xl">
+                        {!readOnly && canEdit && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(sub.id)}
+                            onChange={() => toggleSelect(sub.id)}
+                            className="mt-3.5 h-4 w-4 rounded border-slate-300 text-[#005baa] focus:ring-[#005baa]/20 cursor-pointer shrink-0"
+                            aria-label={`Pilih ${sub.name}`}
+                          />
+                        )}
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#005BAA] to-sky-400 text-sm font-extrabold text-white shadow-2xs">
                           {sub.name
                             ? sub.name
@@ -481,7 +583,7 @@ export function createApprovalsFeature({
 
                       {/* Right: Actions */}
                       <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-                        {isPending && (
+                        {!readOnly && canEdit && isPending && (
                           <>
                             <button
                               type="button"
@@ -519,26 +621,28 @@ export function createApprovalsFeature({
                               <Icons.check className="h-3.5 w-3.5" />
                               Tersinkron di Direktori
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onApproveSubmission(sub);
-                                setSyncToast({
-                                  text: `Data "${sub.name}" berhasil disinkronkan ulang ke Direktori Dosen!`,
-                                  sub,
-                                  type: "approved",
-                                });
-                                setTimeout(() => setSyncToast(""), 8000);
-                              }}
-                              className="text-[11px] text-[#005BAA] hover:underline font-medium"
-                              title="Perbarui data tutor ini di direktori"
-                            >
-                              Sinkronkan Ulang
-                            </button>
+                            {!readOnly && canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onApproveSubmission(sub);
+                                  setSyncToast({
+                                    text: `Data "${sub.name}" berhasil disinkronkan ulang ke Direktori Dosen!`,
+                                    sub,
+                                    type: "approved",
+                                  });
+                                  setTimeout(() => setSyncToast(""), 8000);
+                                }}
+                                className="text-[11px] text-[#005BAA] hover:underline font-medium"
+                                title="Perbarui data tutor ini di direktori"
+                              >
+                                Sinkronkan Ulang
+                              </button>
+                            )}
                           </div>
                         )}
 
-                        {isRejected && (
+                        {!readOnly && canEdit && isRejected && (
                           <button
                             type="button"
                             onClick={() => {
@@ -576,7 +680,7 @@ export function createApprovalsFeature({
                           </button>
                         )}
 
-                        {onDeleteSubmission && (
+                        {!readOnly && canEdit && onDeleteSubmission && (
                           <button
                             type="button"
                             onClick={() => onDeleteSubmission(sub.id)}
@@ -594,6 +698,118 @@ export function createApprovalsFeature({
             </AnimatePresence>
           </div>
         )}
+
+        {/* Bulk Reject Modal */}
+        {bulkRejectModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200"
+            >
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                  <Icons.alert className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-bold text-[#102F52]">
+                  Tolak Massal ({selectedIds.size} Pengajuan)
+                </h3>
+              </div>
+              <p className="mt-2 text-xs text-[#5B6678]">
+                Anda akan menolak <strong>{selectedIds.size} pengajuan calon tutor</strong> sekaligus. Seluruh data yang dipilih tidak akan dimasukkan ke direktori tutor aktif.
+              </p>
+              <div className="mt-4">
+                <label className="block text-xs font-semibold text-[#44607A] mb-1">
+                  Alasan Penolakan Bersama:
+                </label>
+                <textarea
+                  rows={3}
+                  value={bulkRejectReason}
+                  onChange={(e) => setBulkRejectReason(e.target.value)}
+                  placeholder="Contoh: Kuota kelas tutorial untuk kepakaran ini telah terpenuhi pada semester berjalan."
+                  className="w-full rounded-xl border border-[#CCDCEF] p-3 text-xs text-[#102F52] focus:border-rose-500 focus:outline-none"
+                />
+              </div>
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkRejectModalOpen(false);
+                    setBulkRejectReason("");
+                  }}
+                  className="rounded-xl border border-[#CCDCEF] px-4 py-2 text-xs font-semibold text-[#44607A] hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkReject}
+                  className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700"
+                >
+                  Konfirmasi Tolak Massal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Floating Bulk Actions Bar */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && !readOnly && canEdit && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              className="fixed bottom-6 inset-x-0 mx-auto z-40 max-w-xl px-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900/95 text-white p-3.5 shadow-2xl backdrop-blur-md border border-slate-700/80">
+                <div className="flex items-center gap-2.5 pl-1.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/30 text-blue-400 font-black text-xs">
+                    {selectedIds.size}
+                  </span>
+                  <span className="text-xs font-bold text-slate-200">
+                    Pengajuan Dipilih
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBulkApprove}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-2xs cursor-pointer"
+                  >
+                    <Icons.check className="h-3.5 w-3.5" />
+                    Setujui Semua ({selectedIds.size})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkRejectModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-500 transition shadow-2xs cursor-pointer"
+                  >
+                    <Icons.x className="h-3.5 w-3.5" />
+                    Tolak Semua
+                  </button>
+                  {onDeleteSubmission && (
+                    <button
+                      type="button"
+                      onClick={handleBulkDelete}
+                      className="inline-flex items-center gap-1 rounded-xl bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:bg-rose-950/80 hover:text-rose-300 transition cursor-pointer"
+                    >
+                      <Icons.trash className="h-3.5 w-3.5" />
+                      Hapus
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="rounded-xl px-2.5 py-1.5 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Modal Rejection Note */}
         {rejectingItem && (

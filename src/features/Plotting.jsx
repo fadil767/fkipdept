@@ -27,6 +27,8 @@ export function createPlottingComponent(deps) {
     exportPlottingToXLSX,
     exportPlottingTemplateToXLSX,
     exportPlottingToPDF,
+    exportSuratTugasPDF,
+    exportRekapDosenPDF,
     getCourseClassAssignmentPlan,
     getCourseClassCounts,
     getCourseClassPlan,
@@ -46,7 +48,7 @@ export function createPlottingComponent(deps) {
   } = deps;
   const AUTO_PILOT_WORKER_TIMEOUT_MS = 15_000;
 
-  function PlannedClassCountInput({ planned, max, onCommit }) {
+  function PlannedClassCountInput({ planned, max, onCommit, disabled = false }) {
     const [draft, setDraft] = useState(null);
     const commit = () => {
       if (draft === null) return;
@@ -61,6 +63,7 @@ export function createPlottingComponent(deps) {
         min="0"
         max={max}
         value={draft ?? planned}
+        disabled={disabled}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -69,7 +72,7 @@ export function createPlottingComponent(deps) {
             event.currentTarget.blur();
           }
         }}
-        className="w-28 rounded-lg border border-[#dce9e6] bg-[#fffffb] px-2 py-2 text-sm font-normal text-[#26353f] outline-none focus:border-[#9bbfe8]"
+        className="w-28 rounded-lg border border-[#dce9e6] bg-[#fffffb] px-2 py-2 text-sm font-normal text-[#26353f] outline-none focus:border-[#9bbfe8] disabled:opacity-60 disabled:cursor-not-allowed"
       />
     );
   }
@@ -158,6 +161,8 @@ export function createPlottingComponent(deps) {
     selectedTermCode,
     courseClassPlans,
     setCourseClassPlans,
+    canEdit = true,
+    readOnly = false,
   }) {
     const importInputRef = useRef(null);
     const [plottingMode, setPlottingMode] = useState("course");
@@ -250,7 +255,7 @@ export function createPlottingComponent(deps) {
       <button
         type="button"
         onClick={() => sortLecturerHeader(value)}
-        className="inline-flex items-center gap-1 font-medium uppercase tracking-[0.15em] text-[#6d7d86] hover:text-[#005baa]"
+        className="inline-flex items-center gap-1 font-semibold text-xs text-slate-600 hover:text-[#005baa]"
       >
         {label}
         {lecturerHeaderSort === value && (
@@ -886,6 +891,18 @@ export function createPlottingComponent(deps) {
         currentTerm,
       );
     };
+    const runLecturerWorkloadPDFExport = () => {
+      if (typeof exportRekapDosenPDF !== "function") return;
+      const currentTerm =
+        (terms || []).find((t) => t.code === selectedTermCode) ||
+        terms?.[0] || {
+          code: selectedTermCode || "20261",
+          name: "2026/2027 Ganjil",
+          ay: "2026/2027",
+          semester: "Ganjil",
+        };
+      exportRekapDosenPDF(lecturers, courses, currentTerm);
+    };
     const applyImportReview = () => {
       if (!importReview) return;
       setSwapUndo(null);
@@ -1049,10 +1066,16 @@ export function createPlottingComponent(deps) {
     const isRebalanceReview = autoPilotReview?.mode === "rebalance";
     return (
       <div className="space-y-5">
+        {readOnly && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            {Icons.eye && <Icons.eye className="h-4 w-4 text-slate-500 shrink-0" />}
+            <span><strong>Mode Hanya Lihat:</strong> Anda sedang melihat data plotting dan alokasi kelas dalam mode pengamat. Modifikasi alokasi, impor, dan eksekusi Auto-Pilot dibatasi untuk peran Administrator.</span>
+          </div>
+        )}
         <Card className={`p-4 relative transition-all duration-150 ${exportMenuOpen ? "z-50" : "z-20"}`}>
           <div className="grid gap-4 xl:grid-cols-[220px_minmax(280px,1fr)_auto] xl:items-end">
             <label className="space-y-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+              <span className="text-xs font-semibold text-slate-600">
                 Mode Plotting
               </span>
               <div className="relative">
@@ -1071,7 +1094,7 @@ export function createPlottingComponent(deps) {
               </div>
             </label>
             <label className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4f6478]">
+              <span className="text-xs font-semibold text-slate-600">
                 Pencarian
               </span>
               <TextInput
@@ -1086,7 +1109,7 @@ export function createPlottingComponent(deps) {
               />
             </label>
             <div className="space-y-1.5">
-              <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#4f6478]">
+              <span className="block text-xs font-semibold text-slate-600">
                 Aksi Plotting
               </span>
               <div className="flex flex-wrap items-center gap-2">
@@ -1097,52 +1120,56 @@ export function createPlottingComponent(deps) {
                   className="hidden"
                   onChange={handleImport}
                 />
-                <Button
-                  className="h-11 whitespace-nowrap px-4 font-bold shadow-xs"
-                  onClick={runAutoPilot}
-                  disabled={!plannedTotal || autoPilotRunning}
-                  aria-busy={autoPilotRunMode === "auto-pilot"}
-                >
-                  {autoPilotRunMode === "auto-pilot" ? (
-                    <span
-                      className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Icons.check className="h-4 w-4" />
-                  )}
-                  {autoPilotRunMode === "auto-pilot"
-                    ? "Menjalankan Auto-Pilot..."
-                    : "Jalankan Auto-Pilot"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-11 whitespace-nowrap px-3"
-                  onClick={runRebalance}
-                  disabled={!assignedTotal || autoPilotRunning}
-                  aria-busy={autoPilotRunMode === "rebalance"}
-                  title="Seimbangkan beban alokasi"
-                >
-                  {autoPilotRunMode === "rebalance" ? (
-                    <span
-                      className="h-4 w-4 animate-spin rounded-full border-2 border-[#9bbfe8] border-t-[#005baa]"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Icons.swap className="h-4 w-4" />
-                  )}
-                  {autoPilotRunMode === "rebalance"
-                    ? "Menyeimbangkan..."
-                    : "Seimbangkan Beban"}
-                </Button>
-                {autoPilotUndo && (
-                  <Button
-                    variant="secondary"
-                    className="h-11 whitespace-nowrap px-3 text-amber-700 hover:bg-amber-50"
-                    onClick={undoAutoPilot}
-                  >
-                    Batal {autoPilotUndo.mode === "rebalance" ? "Seimbangkan" : "Auto-Pilot"}
-                  </Button>
+                {!readOnly && canEdit && (
+                  <>
+                    <Button
+                      className="h-11 whitespace-nowrap px-4 font-bold shadow-xs"
+                      onClick={runAutoPilot}
+                      disabled={!plannedTotal || autoPilotRunning}
+                      aria-busy={autoPilotRunMode === "auto-pilot"}
+                    >
+                      {autoPilotRunMode === "auto-pilot" ? (
+                        <span
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Icons.check className="h-4 w-4" />
+                      )}
+                      {autoPilotRunMode === "auto-pilot"
+                        ? "Menjalankan Auto-Pilot..."
+                        : "Jalankan Auto-Pilot"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="h-11 whitespace-nowrap px-3"
+                      onClick={runRebalance}
+                      disabled={!assignedTotal || autoPilotRunning}
+                      aria-busy={autoPilotRunMode === "rebalance"}
+                      title="Seimbangkan beban alokasi"
+                    >
+                      {autoPilotRunMode === "rebalance" ? (
+                        <span
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-[#9bbfe8] border-t-[#005baa]"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Icons.swap className="h-4 w-4" />
+                      )}
+                      {autoPilotRunMode === "rebalance"
+                        ? "Menyeimbangkan..."
+                        : "Seimbangkan Beban"}
+                    </Button>
+                    {autoPilotUndo && (
+                      <Button
+                        variant="secondary"
+                        className="h-11 whitespace-nowrap px-3 text-amber-700 hover:bg-amber-50"
+                        onClick={undoAutoPilot}
+                      >
+                        Batal {autoPilotUndo.mode === "rebalance" ? "Seimbangkan" : "Auto-Pilot"}
+                      </Button>
+                    )}
+                  </>
                 )}
 
                 {/* Dropdown Menu: Berkas & Ekspor */}
@@ -1170,27 +1197,29 @@ export function createPlottingComponent(deps) {
                       />
                       <div className="absolute right-0 mt-2 z-50 w-72 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl shadow-slate-900/20 ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
                         <div className="px-3 py-2 border-b border-slate-100">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-semibold text-slate-600">
                             Kelola Data Plotting
                           </p>
                         </div>
                         <div className="p-1 space-y-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExportMenuOpen(false);
-                              importInputRef.current?.click();
-                            }}
-                            className="w-full flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer text-left group"
-                          >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-[#005baa] group-hover:text-white transition-colors">
-                              <Icons.upload className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-slate-800 group-hover:text-[#005baa]">Impor Plotting</p>
-                              <p className="text-[11px] font-normal text-slate-400 truncate">Unggah berkas Excel (.xlsx) atau CSV</p>
-                            </div>
-                          </button>
+                          {!readOnly && canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExportMenuOpen(false);
+                                importInputRef.current?.click();
+                              }}
+                              className="w-full flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer text-left group"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-[#005baa] group-hover:text-white transition-colors">
+                                <Icons.upload className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-800 group-hover:text-[#005baa]">Impor Plotting</p>
+                                <p className="text-[11px] font-normal text-slate-400 truncate">Unggah berkas Excel (.xlsx) atau CSV</p>
+                              </div>
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -1246,7 +1275,25 @@ export function createPlottingComponent(deps) {
                             </div>
                             <div className="min-w-0">
                               <p className="font-bold text-[#005baa]">Cetak Rekap PDF Resmi</p>
-                              <p className="text-[11px] font-normal text-blue-600/75 truncate">Dokumen resmi penugasan semester</p>
+                              <p className="text-[11px] font-normal text-blue-600/75 truncate">Dokumen resmi penetapan plotting kelas</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExportMenuOpen(false);
+                              runLecturerWorkloadPDFExport();
+                            }}
+                            disabled={!lecturers.length}
+                            className="w-full flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer text-left group"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-[#005baa] group-hover:text-white transition-colors">
+                              <Icons.file className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 group-hover:text-[#005baa]">Rekap Beban Dosen PDF</p>
+                              <p className="text-[11px] font-normal text-slate-400 truncate">Laporan beban penugasan seluruh dosen</p>
                             </div>
                           </button>
                         </div>
@@ -1299,7 +1346,7 @@ export function createPlottingComponent(deps) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#005baa]">
+                <p className="text-xs font-semibold text-[#005baa]">
                   Kesehatan Plotting
                 </p>
                 <Badge tone={plottingHealth.isHealthy ? "green" : "amber"}>
@@ -1336,7 +1383,7 @@ export function createPlottingComponent(deps) {
                 key={label}
                 className={`rounded-xl border p-3 transition-colors ${value ? "border-amber-200 bg-amber-50/70" : "border-emerald-200 bg-emerald-50/70"}`}
               >
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 truncate">
+                <p className="text-xs font-semibold text-slate-600 truncate">
                   {label}
                 </p>
                 <p className="mt-1 text-xl font-extrabold text-slate-900 font-display">
@@ -1348,7 +1395,7 @@ export function createPlottingComponent(deps) {
           {!plottingHealth.isHealthy && healthDetailsOpen && (
             <div className="mt-4 grid gap-3 lg:grid-cols-2 pt-3 border-t border-slate-100">
               <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">
+                <p className="text-xs font-semibold text-slate-700">
                   Masalah Alokasi Kelas
                 </p>
                 <ul className="mt-3 max-h-48 space-y-1.5 overflow-y-auto text-xs text-slate-700 font-medium">
@@ -1369,7 +1416,7 @@ export function createPlottingComponent(deps) {
                 </ul>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">
+                <p className="text-xs font-semibold text-slate-700">
                   Masalah Dosen & Aturan
                 </p>
                 <ul className="mt-3 max-h-48 space-y-1.5 overflow-y-auto text-xs text-slate-700 font-medium">
@@ -1400,7 +1447,7 @@ export function createPlottingComponent(deps) {
           <Card className="p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#005baa]">
+                <p className="text-xs font-semibold text-[#005baa]">
                   {isRebalanceReview ? "Tinjauan Penyeimbangan" : "Tinjauan Auto-Pilot"}
                 </p>
                 <h3 className="mt-1 text-lg font-medium text-[#26353f]">
@@ -1433,7 +1480,7 @@ export function createPlottingComponent(deps) {
               <div className="mt-5 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <p className="text-xs font-semibold text-slate-600">
                       {isRebalanceReview ? "Kelas dialihkan" : "Slot terbuka terisi"}
                     </p>
                     <p className="mt-2 text-2xl font-medium text-[#102f52]">
@@ -1448,7 +1495,7 @@ export function createPlottingComponent(deps) {
                     </p>
                   </div>
                   <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <p className="text-xs font-semibold text-slate-600">
                       {isRebalanceReview
                         ? "Kecocokan keahlian akhir"
                         : "Kecocokan keahlian hasil generate"}
@@ -1476,7 +1523,7 @@ export function createPlottingComponent(deps) {
                     )}
                   </div>
                   <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <p className="text-xs font-semibold text-slate-600">
                       Alokasi penilaian rendah
                     </p>
                     <p className="mt-2 text-2xl font-medium text-[#102f52]">
@@ -1488,7 +1535,7 @@ export function createPlottingComponent(deps) {
                     </p>
                   </div>
                   <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <p className="text-xs font-semibold text-slate-600">
                       Sebaran beban
                     </p>
                     <p className="mt-2 text-2xl font-medium text-[#102f52]">
@@ -1501,7 +1548,7 @@ export function createPlottingComponent(deps) {
                 </div>
                 <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#315577]">
+                    <p className="text-xs font-semibold text-[#005baa]">
                       Distribusi Beban Kerja
                     </p>
                     <p className="text-xs text-[#61717b]">
@@ -1538,7 +1585,7 @@ export function createPlottingComponent(deps) {
             )}
             <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.35fr]">
               <div className="rounded-xl border border-[#f3dda2] bg-[#fff9df] p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#71540f]">
+                <p className="text-xs font-semibold text-amber-900">
                   Peringatan Konflik
                 </p>
                 {autoPilotWarnings.length ? (
@@ -1559,7 +1606,7 @@ export function createPlottingComponent(deps) {
                 )}
               </div>
               <div className="rounded-xl border border-[#dce9e6] bg-[#fffffb] p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#315577]">
+                <p className="text-xs font-semibold text-slate-700">
                   Penjelasan Alokasi
                 </p>
                 {autoPilotExplanations.length ? (
@@ -1604,7 +1651,7 @@ export function createPlottingComponent(deps) {
         {plottingMode === "course" ? (
           <Card className="overflow-hidden">
             <div className="border-b border-[#dce9e6] p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#6d7d86]">
+              <p className="text-xs font-semibold text-[#005baa]">
                 Mata Kuliah
               </p>
               <p className="mt-1 text-sm text-[#61717b]">
@@ -1687,12 +1734,13 @@ export function createPlottingComponent(deps) {
                             </div>
                             <div className="flex flex-wrap items-end gap-3">
                               <label className="space-y-1.5">
-                                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                                <span className="text-xs font-semibold text-slate-600">
                                   Rencana Kelas
                                 </span>
                                 <PlannedClassCountInput
                                   planned={planned}
                                   max={MAX_CLASS_ASSIGNMENTS_PER_COURSE}
+                                  disabled={readOnly || !canEdit}
                                   onCommit={(value) =>
                                     commitCoursePlanCount(course, value)
                                   }
@@ -1723,7 +1771,7 @@ export function createPlottingComponent(deps) {
                                   key={`${course.code}-${index}`}
                                   className="space-y-1.5 rounded-xl border border-[#dce9e6] bg-[#fffffb] p-3"
                                 >
-                                  <span className="flex items-center justify-between gap-2 text-xs font-medium uppercase tracking-[0.15em] text-[#6d7d86]">
+                                  <span className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700">
                                     <span>
                                       {course.code}.{index + 1}
                                     </span>
@@ -1740,6 +1788,7 @@ export function createPlottingComponent(deps) {
                                   <div className="relative">
                                     <select
                                       value={selectedId}
+                                      disabled={readOnly || !canEdit}
                                       onChange={(event) =>
                                         assignLecturer(
                                           course.code,
@@ -1747,7 +1796,7 @@ export function createPlottingComponent(deps) {
                                           event.target.value,
                                         )
                                       }
-                                      className="w-full appearance-none rounded-lg border border-[#dce9e6] bg-[#fffffb] px-3 py-2.5 pr-9 text-sm font-normal text-[#3f4f58] outline-none focus:border-[#9bbfe8]"
+                                      className="w-full appearance-none rounded-lg border border-[#dce9e6] bg-[#fffffb] px-3 py-2.5 pr-9 text-sm font-normal text-[#3f4f58] outline-none focus:border-[#9bbfe8] disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                       <option value="">Belum Dialokasikan</option>
                                       {lecturerOptions.map((lecturer) => {
@@ -1817,7 +1866,7 @@ export function createPlottingComponent(deps) {
             <Card className="mobile-card-table plotting-lecturer-table overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-[#dce9e6] p-5 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#6d7d86]">
+                  <p className="text-xs font-semibold text-[#005baa]">
                     Dosen Pengajar
                   </p>
                   <p className="mt-1 text-sm text-[#61717b]">
@@ -1826,7 +1875,7 @@ export function createPlottingComponent(deps) {
                 </div>
                 <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto">
                   <label className="space-y-1.5 lg:w-48">
-                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <span className="text-xs font-semibold text-slate-600">
                       Kelas Terplot
                     </span>
                     <div className="relative">
@@ -1848,7 +1897,7 @@ export function createPlottingComponent(deps) {
                     </div>
                   </label>
                   <label className="space-y-1.5 lg:w-56">
-                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <span className="text-xs font-semibold text-slate-600">
                       Urutkan
                     </span>
                     <div className="relative">
@@ -1871,7 +1920,7 @@ export function createPlottingComponent(deps) {
 
               {/* FKIP Expertise Filter Chips */}
               <div className="flex items-center gap-2 overflow-x-auto px-5 py-3 border-b border-[#dce9e6] bg-[#fbfdfb] no-scrollbar">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#6d7d86] shrink-0 flex items-center gap-1">
+                <span className="text-xs font-semibold text-slate-600 shrink-0 flex items-center gap-1">
                   <Icons.graduation className="h-3.5 w-3.5 text-[#005baa]" />
                   Kepakaran FKIP:
                 </span>
@@ -1962,7 +2011,7 @@ export function createPlottingComponent(deps) {
                             </span>
                           </span>
                           <span
-                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                               isOverloaded
                                 ? "bg-rose-100 text-rose-800 border border-rose-200"
                                 : isOptimal
@@ -2006,7 +2055,7 @@ export function createPlottingComponent(deps) {
                         <div className="mt-2.5 space-y-1.5 text-xs">
                           {lecturer.expertise && lecturer.expertise.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1">
-                              <span className="text-[10px] font-semibold text-[#6d7d86] uppercase tracking-wider">
+                              <span className="text-[11px] font-semibold text-slate-500">
                                 Keahlian:
                               </span>
                               {lecturer.expertise.map((item) => (
@@ -2016,7 +2065,7 @@ export function createPlottingComponent(deps) {
                           )}
                           {lecturer.plotted && lecturer.plotted.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1">
-                              <span className="text-[10px] font-semibold text-[#6d7d86] uppercase tracking-wider">
+                              <span className="text-[11px] font-semibold text-slate-500">
                                 Terplot:
                               </span>
                               <PlottedCourseBadges
@@ -2035,7 +2084,7 @@ export function createPlottingComponent(deps) {
                           className="w-full justify-center min-h-[42px] font-semibold text-[#005baa] border-blue-200 hover:bg-blue-50"
                           onClick={() => setSelectedLecturerId(lecturer.id)}
                         >
-                          Alokasikan Kelas
+                          {readOnly ? "Lihat Alokasi" : "Alokasikan Kelas"}
                         </Button>
                       </div>
                     </div>
@@ -2046,7 +2095,7 @@ export function createPlottingComponent(deps) {
               {/* Desktop Candidate Lecturer Table (>= sm) */}
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full min-w-[980px] text-left text-sm">
-                  <thead className="bg-[#f7fbf6] text-[10px] uppercase tracking-[0.15em] text-[#6d7d86]">
+                  <thead className="bg-slate-50/90 text-xs font-semibold text-slate-600 border-b border-slate-200/80">
                     <tr>
                       <th className="px-4 py-4">
                         {lecturerSortHeader("ID", "id")}
@@ -2105,7 +2154,7 @@ export function createPlottingComponent(deps) {
                                       {plottedCount} <span className="font-normal text-slate-400">/ {totalCap} Kelas</span>
                                     </span>
                                     <span
-                                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                                         isOverloaded
                                           ? "bg-rose-100 text-rose-800 border border-rose-200"
                                           : isOptimal
@@ -2165,7 +2214,7 @@ export function createPlottingComponent(deps) {
                               variant="secondary"
                               onClick={() => setSelectedLecturerId(lecturer.id)}
                             >
-                              Alokasikan
+                              {readOnly ? "Lihat" : "Alokasikan"}
                             </Button>
                           </td>
                         </tr>
@@ -2245,7 +2294,7 @@ export function createPlottingComponent(deps) {
                             </span>
                           </div>
                           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                            {count > 0 && (
+                            {!readOnly && canEdit && count > 0 && (
                               <Button
                                 variant="ghost"
                                 className="px-2.5 min-h-[38px]"
@@ -2285,7 +2334,7 @@ export function createPlottingComponent(deps) {
                                     ? `Dosen ini telah mencapai batas ${lecturerLimit} kelas sesuai penilaiannya.`
                                     : undefined
                                 }
-                                disabled={maxCountForCourse === 0}
+                                disabled={readOnly || !canEdit || maxCountForCourse === 0}
                                 aria-label={`Kelas dialokasikan untuk ${selectedLecturer.name} pada ${course.title}`}
                               />
                             </div>
@@ -2294,7 +2343,22 @@ export function createPlottingComponent(deps) {
                       );
                     })}
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                    <Button
+                      variant="secondary"
+                      className="border-[#005baa]/30 text-[#005baa] hover:bg-blue-50 text-xs font-bold"
+                      onClick={() => {
+                        const currentTerm =
+                          (terms || []).find((t) => t.code === selectedTermCode) ||
+                          terms?.[0];
+                        if (typeof exportSuratTugasPDF === "function") {
+                          exportSuratTugasPDF(selectedLecturer, courses, currentTerm);
+                        }
+                      }}
+                    >
+                      <Icons.file className="h-4 w-4 mr-1 text-[#005baa]" />
+                      Unduh Surat Tugas PDF
+                    </Button>
                     <Button
                       variant="secondary"
                       onClick={() => setSelectedLecturerId("")}
@@ -2310,7 +2374,7 @@ export function createPlottingComponent(deps) {
                 <div className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="space-y-1.5">
-                      <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                      <span className="text-xs font-semibold text-slate-600">
                         Kelas milik {swapSourceLecturer.name}
                       </span>
                       <div className="relative">
@@ -2339,7 +2403,7 @@ export function createPlottingComponent(deps) {
                       </div>
                     </label>
                     <label className="space-y-1.5">
-                      <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                      <span className="text-xs font-semibold text-slate-600">
                         Kelas Tujuan
                       </span>
                       <div className="relative">
@@ -2368,7 +2432,7 @@ export function createPlottingComponent(deps) {
                     </label>
                   </div>
                   <label className="block space-y-1.5">
-                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#6d7d86]">
+                    <span className="text-xs font-semibold text-slate-600">
                       Dosen di Kelas Target
                     </span>
                     <div className="relative">
@@ -2652,7 +2716,7 @@ export function createPlottingComponent(deps) {
                 />
               </div>
               <div className="rounded-xl border border-[#dce9e6] bg-[#f7fbf6] p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#315577]">
+                <p className="text-xs font-semibold text-slate-700">
                   Belum Ada Perubahan yang Diterapkan
                 </p>
                 <ul className="mt-3 max-h-52 space-y-2 overflow-y-auto text-sm leading-6 text-[#4f6478]">
@@ -2669,7 +2733,7 @@ export function createPlottingComponent(deps) {
               {autoPilotPreview.mode === "rebalance" &&
                 autoPilotPreview.result.reassignments?.length > 0 && (
                   <div className="rounded-xl border border-[#dce9e6] bg-white p-4">
-                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#315577]">
+                    <p className="text-xs font-semibold text-slate-700">
                       Usulan Pengalihan Kelas
                     </p>
                     <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">

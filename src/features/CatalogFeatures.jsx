@@ -61,11 +61,15 @@ export function createCatalogFeatures(deps) {
     setLecturers,
     setTermPlottings,
     setCourseClassPlans,
+    canEdit = true,
+    readOnly = false,
   }) {
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState("code");
     const [modal, setModal] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [selectedCodes, setSelectedCodes] = useState(new Set());
+    const [bulkDeleteTarget, setBulkDeleteTarget] = useState(null);
     const rows = useMemo(
       () =>
         courses
@@ -121,15 +125,92 @@ export function createCatalogFeatures(deps) {
       );
       setDeleteTarget(null);
     };
+
+    const toggleSelectCourse = (code) => {
+      setSelectedCodes((prev) => {
+        const next = new Set(prev);
+        if (next.has(code)) next.delete(code);
+        else next.add(code);
+        return next;
+      });
+    };
+
+    const isAllCoursesSelected =
+      rows.length > 0 && rows.every((c) => selectedCodes.has(c.code));
+
+    const toggleSelectAllCourses = () => {
+      if (isAllCoursesSelected) {
+        setSelectedCodes(new Set());
+      } else {
+        setSelectedCodes(new Set(rows.map((c) => c.code)));
+      }
+    };
+
+    const removeMultiple = (codes) => {
+      const codeSet = new Set(codes);
+      setCourses((prev) => prev.filter((course) => !codeSet.has(course.code)));
+      setLecturers((prev) =>
+        prev.map((lecturer) => ({
+          ...lecturer,
+          plotted: lecturer.plotted.filter((item) => !codeSet.has(item)),
+        })),
+      );
+      setTermPlottings((prev) =>
+        prev.map((row) => ({
+          ...row,
+          plotted: row.plotted.filter((item) => !codeSet.has(item)),
+        })),
+      );
+      setCourseClassPlans((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).map(([termCode, plan]) => [
+            termCode,
+            {
+              counts: Object.fromEntries(
+                Object.entries(plan?.counts || {}).filter(
+                  ([courseCode]) => !codeSet.has(courseCode),
+                ),
+              ),
+              assignments: Object.fromEntries(
+                Object.entries(plan?.assignments || {}).filter(
+                  ([courseCode]) => !codeSet.has(courseCode),
+                ),
+              ),
+            },
+          ]),
+        ),
+      );
+      setSelectedCodes(new Set());
+      setBulkDeleteTarget(null);
+    };
     return (
       <div className="space-y-5">
-        <div className="flex justify-end">
-          <Button onClick={() => setModal({})}>
-            <Icons.plus className="h-4 w-4" />
-            Tambah Mata Kuliah
-          </Button>
-        </div>
-        <Card className="grid items-end gap-3 p-4 md:grid-cols-[1fr_220px]">
+        {!readOnly && canEdit && (
+          <div className="flex justify-end">
+            <Button onClick={() => setModal({})}>
+              <Icons.plus className="h-4 w-4" />
+              Tambah Mata Kuliah
+            </Button>
+          </div>
+        )}
+        {readOnly && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            {Icons.eye && <Icons.eye className="h-4 w-4 text-slate-500 shrink-0" />}
+            <span><strong>Mode Hanya Lihat:</strong> Anda sedang melihat katalog mata kuliah dalam mode pengamat. Penambahan, pengeditan, atau penghapusan data dibatasi untuk peran Administrator.</span>
+          </div>
+        )}
+        <Card className="grid items-center gap-3 p-4 md:grid-cols-[auto_1fr_220px]">
+          {!readOnly && canEdit && rows.length > 0 && (
+            <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-2xs select-none">
+              <input
+                type="checkbox"
+                checked={isAllCoursesSelected}
+                onChange={toggleSelectAllCourses}
+                className="h-4 w-4 rounded border-slate-300 text-[#005baa] focus:ring-[#005baa]/20 cursor-pointer"
+              />
+              <span className="hidden sm:inline">Pilih Semua ({rows.length})</span>
+            </label>
+          )}
           <TextInput
             icon={Icons.search}
             value={query}
@@ -151,6 +232,15 @@ export function createCatalogFeatures(deps) {
                 className="flex items-center justify-between gap-4 p-4 sm:px-5 transition-colors hover:bg-slate-50/60"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
+                  {!readOnly && canEdit && (
+                    <input
+                      type="checkbox"
+                      checked={selectedCodes.has(course.code)}
+                      onChange={() => toggleSelectCourse(course.code)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#005baa] focus:ring-[#005baa]/20 cursor-pointer shrink-0"
+                      aria-label={`Pilih ${course.title}`}
+                    />
+                  )}
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#005baa] border border-blue-200/60 shadow-2xs">
                     <Icons.book className="h-5 w-5" />
                   </div>
@@ -170,24 +260,26 @@ export function createCatalogFeatures(deps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setModal(course)}
-                    title="Edit mata kuliah"
-                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Icons.edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(course)}
-                    title="Hapus mata kuliah"
-                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Icons.trash className="h-4 w-4" />
-                  </button>
-                </div>
+                {!readOnly && canEdit && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setModal(course)}
+                      title="Edit mata kuliah"
+                      className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Icons.edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(course)}
+                      title="Hapus mata kuliah"
+                      className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Icons.trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -211,6 +303,46 @@ export function createCatalogFeatures(deps) {
               onClose={() => setModal(null)}
             />
           </Modal>
+        )}
+        {selectedCodes.size > 0 && !readOnly && canEdit && (
+          <div className="fixed bottom-6 inset-x-0 mx-auto z-40 max-w-md px-4">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-900/95 text-white p-3.5 shadow-2xl backdrop-blur-md border border-slate-700/80 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex items-center gap-2.5 pl-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/30 text-blue-400 font-extrabold text-xs">
+                  {selectedCodes.size}
+                </span>
+                <span className="text-xs font-semibold text-slate-200">
+                  Mata kuliah dipilih
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="danger"
+                  className="h-8 px-3 text-xs font-bold"
+                  onClick={() => setBulkDeleteTarget(Array.from(selectedCodes))}
+                >
+                  <Icons.trash className="h-3.5 w-3.5 mr-1" />
+                  Hapus ({selectedCodes.size})
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCodes(new Set())}
+                  className="rounded-xl px-2.5 py-1.5 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {bulkDeleteTarget && (
+          <DeleteConfirmation
+            itemType="mata kuliah terpilih"
+            itemLabel={`${bulkDeleteTarget.length} mata kuliah (${bulkDeleteTarget.slice(0, 5).join(", ")}${bulkDeleteTarget.length > 5 ? "..." : ""})`}
+            detail="Tindakan ini akan menghapus mata kuliah terpilih dari katalog, seluruh alokasi plotting semester terkait, dan rencana kelas yang tersimpan."
+            onConfirm={() => removeMultiple(bulkDeleteTarget)}
+            onClose={() => setBulkDeleteTarget(null)}
+          />
         )}
         {deleteTarget && (
           <DeleteConfirmation
@@ -292,6 +424,8 @@ export function createCatalogFeatures(deps) {
     setTermPlottings,
     setCourseClassPlans,
     onActiveTermChange,
+    canEdit = true,
+    readOnly = false,
   }) {
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState("name");
@@ -332,12 +466,20 @@ export function createCatalogFeatures(deps) {
     };
     return (
       <div className="space-y-5">
-        <div className="flex justify-end">
-          <Button onClick={() => setModal({})}>
-            <Icons.plus className="h-4 w-4" />
-            Tambah Semester
-          </Button>
-        </div>
+        {!readOnly && canEdit && (
+          <div className="flex justify-end">
+            <Button onClick={() => setModal({})}>
+              <Icons.plus className="h-4 w-4" />
+              Tambah Semester
+            </Button>
+          </div>
+        )}
+        {readOnly && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            {Icons.eye && <Icons.eye className="h-4 w-4 text-slate-500 shrink-0" />}
+            <span><strong>Mode Hanya Lihat:</strong> Anda sedang melihat data semester dalam mode pengamat. Penambahan, pengeditan, atau penghapusan data dibatasi untuk peran Administrator.</span>
+          </div>
+        )}
         <Card className="grid items-end gap-3 p-4 md:grid-cols-[1fr_220px]">
           <TextInput
             icon={Icons.search}
@@ -390,24 +532,26 @@ export function createCatalogFeatures(deps) {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setModal(term)}
-                    title="Edit semester"
-                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Icons.edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(term)}
-                    title="Hapus semester"
-                    className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Icons.trash className="h-4 w-4" />
-                  </button>
-                </div>
+                {!readOnly && canEdit && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setModal(term)}
+                      title="Edit semester"
+                      className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-[#005baa] hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Icons.edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(term)}
+                      title="Hapus semester"
+                      className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Icons.trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

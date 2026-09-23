@@ -6,8 +6,16 @@ import { createApprovalsFeature } from "./features/ApprovalsFeature.jsx";
 import { createCatalogFeatures } from "./features/CatalogFeatures.jsx";
 import { createDirectoryFeatures } from "./features/DirectoryFeatures.jsx";
 import { createPlottingComponent } from "./features/Plotting.jsx";
+import { createAuditLogViewer } from "./features/AuditLogViewer.jsx";
 import AccessibilityWidget from "./features/AccessibilityWidget.jsx";
 import SwitchAccountModal, { saveRecentAccount } from "./features/SwitchAccountModal.jsx";
+import { logAction } from "./lib/auditLog.js";
+import { ROLES, ROLE_CONFIG, fetchUserRole, can } from "./lib/rbac.js";
+import UserManagementModal from "./features/UserManagementModal.jsx";
+import NotificationCenter from "./features/NotificationCenter.jsx";
+import TermComparison from "./features/TermComparison.jsx";
+import BackupRestoreModal from "./features/BackupRestoreModal.jsx";
+import { addNotification } from "./lib/notifications.js";
 import {
   LECTURER_CLASS_LIMIT,
   buildAutoPilotPlotting,
@@ -251,6 +259,17 @@ const Icons = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </IconBase>
   ),
+  clock: (p) => (
+    <IconBase {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </IconBase>
+  ),
+  refresh: (p) => (
+    <IconBase {...p}>
+      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+    </IconBase>
+  ),
 };
 
 const department = {
@@ -268,6 +287,8 @@ const nav = [
   { id: "plotting", label: "Plotting", icon: Icons.file },
   { id: "courses", label: "Mata Kuliah", icon: Icons.book },
   { id: "terms", label: "Semester", icon: Icons.calendar },
+  { id: "comparison", label: "Bandingkan", icon: Icons.swap },
+  { id: "audit", label: "Log Aktivitas", icon: Icons.clock },
 ];
 const dashboardPalette = [
   "#005baa",
@@ -1296,6 +1317,8 @@ const {
   exportPlottingToXLSX,
   exportPlottingTemplateToXLSX,
   exportPlottingToPDF,
+  exportSuratTugasPDF,
+  exportRekapDosenPDF,
   parseCSV,
   rowsToObjects,
   parseXLSX,
@@ -1530,7 +1553,7 @@ const FILTER_OPTION_TRANSLATIONS = {
 function SelectBox({ label, value, onChange, options = [] }) {
   return (
     <label className="space-y-1">
-      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4f6478]">
+      <span className="text-xs font-semibold text-slate-600">
         {label}
       </span>
       <div className="relative">
@@ -1674,7 +1697,7 @@ function ImportReviewModal({
               key={item.label}
               className={`rounded-xl border p-4 ${item.tone === "error" ? "border-rose-200 bg-rose-50" : item.tone === "warn" ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}
             >
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-xs font-semibold text-slate-600">
                 {item.label}
               </p>
               <p className="mt-1 text-2xl font-extrabold text-slate-900 font-display">
@@ -1685,7 +1708,7 @@ function ImportReviewModal({
         </div>
         {issues.length > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+            <p className="text-xs font-bold text-amber-900">
               Rincian Validasi
             </p>
             <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto text-xs leading-5 text-amber-900 font-medium">
@@ -1702,7 +1725,7 @@ function ImportReviewModal({
         )}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+            <p className="text-xs font-semibold text-slate-700">
               Baris data siap diterapkan
             </p>
           </div>
@@ -1896,6 +1919,9 @@ function TopNavigation({
   pendingLecturerLabelCount = 0,
   isOnline = true,
   realtimeStatus = { status: "CONNECTED", mode: "local" },
+  userRole = "admin",
+  onOpenUserManagement,
+  onOpenBackupRestore,
 }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const activeTabRef = useRef(null);
@@ -1936,7 +1962,7 @@ function TopNavigation({
                 S1
               </span>
             </div>
-            <p className="hidden 2xl:block text-[9px] font-bold uppercase tracking-[0.14em] text-[#005baa] whitespace-nowrap">
+            <p className="hidden 2xl:block text-[11px] font-semibold text-[#005baa] whitespace-nowrap">
               {department.subtitle}
             </p>
           </div>
@@ -1959,10 +1985,10 @@ function TopNavigation({
                     : "text-[#334e68] hover:bg-white hover:text-[#005baa]"
                 }`}
               >
-                <Icon className={`h-3.5 w-3.5 xl:h-4 xl:w-4 shrink-0 ${selected ? "text-white" : "text-[#627d98]"}`} />
+                <Icon className="h-4 w-4 shrink-0" />
                 <span>{item.label}</span>
                 {isApprovals && pendingCount > 0 && (
-                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black shadow-xs ${
+                  <span className={`ml-0.5 rounded-full px-1.5 py-0.2 text-[10px] font-extrabold transition-transform duration-200 ${
                     selected ? "bg-white text-rose-600" : "bg-rose-600 text-white animate-pulse"
                   }`}>
                     {pendingCount}
@@ -2050,6 +2076,9 @@ function TopNavigation({
             </button>
           )}
 
+          {/* In-App Notification Center */}
+          <NotificationCenter onNavigate={(tab) => setActive(tab)} />
+
           {/* Accessibility Quick Button in Navbar (Desktop/Laptop) */}
           <button
             type="button"
@@ -2109,7 +2138,7 @@ function TopNavigation({
                   {/* Profil Aktif Card */}
                   <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#005baa]">Akun Aktif</p>
+                      <p className="text-[11px] font-semibold text-[#005baa]">Akun Aktif</p>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
                         isDemoSession ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
                       }`}>
@@ -2120,12 +2149,21 @@ function TopNavigation({
                     <p className="text-xs font-bold text-[#102f52] truncate" title={userEmail}>
                       {userEmail || "Administrator"}
                     </p>
-                    <p className="text-[11px] text-slate-500 font-medium">Administrator Program Studi</p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <p className="text-[11px] text-slate-500 font-medium">Program Studi FKIP</p>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                          (ROLE_CONFIG[userRole] || ROLE_CONFIG.viewer).badgeColor
+                        }`}
+                      >
+                        {(ROLE_CONFIG[userRole] || ROLE_CONFIG.viewer).label}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Quick Switch Section */}
                   <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                    <p className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <p className="px-2 text-[11px] font-semibold text-slate-500">
                       Beralih Akun (Switch)
                     </p>
 
@@ -2182,6 +2220,36 @@ function TopNavigation({
                       <Icons.swap className="h-4 w-4 text-[#005baa]" />
                       <span>Kelola & Tambah Akun...</span>
                     </button>
+
+                    {/* Super Admin: User Management */}
+                    {can(userRole, "manage_users") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onOpenUserManagement?.();
+                        }}
+                        className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
+                      >
+                        <Icons.users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <span>Kelola Akses Pengguna...</span>
+                      </button>
+                    )}
+
+                    {/* Admin/Super Admin: Backup & Restore */}
+                    {can(userRole, "manage_terms") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onOpenBackupRestore?.();
+                        }}
+                        className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-[#005baa] dark:text-cyan-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                      >
+                        <Icons.download className="h-4 w-4 text-[#005baa] dark:text-cyan-400" />
+                        <span>Cadangkan & Pulihkan Data...</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Accessibility Modal Trigger on Mobile */}
@@ -2310,6 +2378,16 @@ function Header({ active, terms, selectedTermCode, setSelectedTermCode }) {
       "Semester & Kalender",
       "Kelola periode semester akademik dan tentukan semester aktif yang digunakan untuk proses plotting.",
     ],
+    comparison: [
+      "Analitik Komparatif",
+      "Perbandingan Antar Semester",
+      "Bandingkan alokasi mengajar, retensi dosen, dan dinamika beban SKS antar semester akademik.",
+    ],
+    audit: [
+      "Audit Trail & Kepatuhan",
+      "Log Aktivitas Administrator",
+      "Rekam jejak seluruh mutasi data dosen, plotting, mata kuliah, dan persetujuan secara transparan.",
+    ],
   };
   const [eyebrow, title, desc] = titles[active] || [
     "Dashboard",
@@ -2319,7 +2397,7 @@ function Header({ active, terms, selectedTermCode, setSelectedTermCode }) {
   return (
     <div className="mb-4 sm:mb-6 flex flex-col gap-1.5 sm:gap-2 md:flex-row md:items-end md:justify-between">
       <div>
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-[#005baa]">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50/90 border border-blue-200/70 px-2.5 py-0.5 text-xs font-semibold text-[#005baa]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#005baa]" />
           {eyebrow}
         </div>
@@ -2353,7 +2431,7 @@ function Stat({ label, value, icon: Icon, tone = "blue", note }) {
       />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#4f6478]">
+          <p className="text-xs font-semibold text-slate-600">
             {label}
           </p>
           <p className="font-display mt-2 text-3xl font-extrabold tracking-tight text-[#102f52]">
@@ -2446,6 +2524,7 @@ const { Dashboard, Lecturers } = createDirectoryFeatures({
   dedupeImportedLecturers,
   exportLecturerTemplateToXLSX,
   exportLecturersToXLSX,
+  exportSuratTugasPDF,
   getPlottedCountData,
   getPlottedCourseCounts,
   includes,
@@ -2484,6 +2563,8 @@ const Plotting = createPlottingComponent({
   exportPlottingToXLSX,
   exportPlottingTemplateToXLSX,
   exportPlottingToPDF,
+  exportSuratTugasPDF,
+  exportRekapDosenPDF,
   getCourseClassAssignmentPlan,
   getCourseClassCounts,
   getCourseClassPlan,
@@ -2521,6 +2602,13 @@ const Approvals = createApprovalsFeature({
   Card,
   Icons,
   courseTitleByCode,
+});
+
+const AuditLogViewer = createAuditLogViewer({
+  Button,
+  Card,
+  Icons,
+  TextInput,
 });
 
 const INITIAL_SUBMISSIONS = [
@@ -2817,6 +2905,34 @@ export default function App() {
   const [saveNowSignal, setSaveNowSignal] = useState(0);
   const [initialPublicLookupId, setInitialPublicLookupId] = useState("");
   const [authError, setAuthError] = useState("");
+  const [userRole, setUserRole] = useState(
+    isDemoSession ? ROLES.SUPER_ADMIN : ROLES.ADMIN,
+  );
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadRole() {
+      if (!userEmail) return;
+      if (isDemoSession) {
+        setUserRole(ROLES.SUPER_ADMIN);
+        return;
+      }
+      try {
+        const role = await fetchUserRole(userEmail);
+        if (!isCancelled && role) {
+          setUserRole(role);
+        }
+      } catch (err) {
+        console.warn("Failed to load user role:", err);
+      }
+    }
+    loadRole();
+    return () => {
+      isCancelled = true;
+    };
+  }, [userEmail, isDemoSession]);
 
   const {
     isOnline,
@@ -2914,6 +3030,12 @@ export default function App() {
             type: "success",
             message: `Pengajuan tutor baru masuk: ${newSub.name}`,
           });
+          addNotification({
+            type: "submission",
+            title: "Pengajuan Tutor Baru",
+            message: `${newSub.name || "Tutor baru"} telah mengirim formulir kesediaan mengajar.`,
+            targetTab: "approvals",
+          });
         } else if (event.eventType === "UPDATE") {
           if (!event.new) return;
           const updatedSub = event.new;
@@ -2924,6 +3046,14 @@ export default function App() {
             type: "info",
             message: `Status pengajuan tutor (${updatedSub.name}): ${updatedSub.status}`,
           });
+          if (updatedSub.status === "approved") {
+            addNotification({
+              type: "approval",
+              title: "Pengajuan Disetujui",
+              message: `Pengajuan ${updatedSub.name} telah disetujui.`,
+              targetTab: "lecturers",
+            });
+          }
         }
       },
       onCourseClassPlansChange: (event) => {
@@ -3672,6 +3802,7 @@ export default function App() {
     syncedRevisionRef.current = 0;
     setHydrated(false);
     setSession({ userEmail: email, entryMode: "admin", isDemo: false });
+    logAction(email, "login", "auth", email, email, { type: "cloud" });
   };
 
   // Tangani hasil callback OAuth (Google Workspace SSO) saat halaman dimuat
@@ -3731,6 +3862,7 @@ export default function App() {
       entryMode: "admin",
       isDemo: true,
     });
+    logAction(DEMO_ACCOUNT.email, "login", "auth", DEMO_ACCOUNT.email, "Admin Demo", { type: "demo" });
   };
 
   const handleSwitchToDemo = () => {
@@ -3767,6 +3899,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (userEmail) {
+      logAction(userEmail, "logout", "auth", userEmail, userEmail);
+    }
     signOut();
     try {
       localStorage.removeItem("ut_is_demo_session");
@@ -3804,6 +3939,8 @@ export default function App() {
     plotting: Plotting,
     courses: Courses,
     terms: Terms,
+    comparison: TermComparison,
+    audit: AuditLogViewer,
   }[active];
   const termScopedLecturers = useMemo(
     () =>
@@ -3916,6 +4053,30 @@ export default function App() {
         new: approvedLecturer,
       });
 
+      logAction(
+        userEmail,
+        "approve",
+        "submission",
+        sub.id,
+        sub.name || approvedLecturer.name,
+        { degree: sub.degree, courses: approvedLecturer.plotted },
+      );
+      logAction(
+        userEmail,
+        "create",
+        "lecturer",
+        approvedLecturer.id,
+        approvedLecturer.name,
+        { source: "tutor_submission" },
+      );
+
+      addNotification({
+        type: "approval",
+        title: "Pengajuan Disetujui",
+        message: `${sub.name || approvedLecturer.name} disetujui & ditambahkan ke direktori dosen.`,
+        targetTab: "lecturers",
+      });
+
       // 4. Jika Supabase aktif, simpan ke Supabase
       if (USE_SUPABASE) {
         try {
@@ -3931,7 +4092,7 @@ export default function App() {
         }
       }
     },
-    [terms],
+    [terms, userEmail],
   );
 
   const handleSyncApprovedToDirectory = useCallback(() => {
@@ -3976,6 +4137,13 @@ export default function App() {
   }, [submissions, terms]);
 
   const handleRejectSubmission = useCallback(async (subId, reason) => {
+    logAction(userEmail, "reject", "submission", subId, subId, { reason });
+    addNotification({
+      type: "rejection",
+      title: "Pengajuan Ditolak",
+      message: `Pengajuan tutor ${subId} ditolak. ${reason ? `Alasan: ${reason}` : ""}`,
+      targetTab: "approvals",
+    });
     setSubmissions((prev) =>
       prev.map((s) =>
         s.id === subId
@@ -4004,19 +4172,21 @@ export default function App() {
         );
       } catch (err) {}
     }
-  }, []);
+  }, [userEmail]);
 
   const handleDeleteSubmission = useCallback((subId) => {
+    logAction(userEmail, "delete", "submission", subId, subId);
     setSubmissions((prev) => prev.filter((s) => s.id !== subId));
     broadcastLocalChange("SUBMISSION_MUTATION", {
       eventType: "DELETE",
       id: subId,
     });
-  }, []);
+  }, [userEmail]);
 
   const handleDeleteLecturer = useCallback(
     async (id) => {
       if (!id) return;
+      logAction(userEmail, "delete", "lecturer", id, id);
       // 1. Simpan permanen ID dosen yang dihapus di localStorage
       storeDeletedLecturerId(id);
 
@@ -4092,6 +4262,14 @@ export default function App() {
   const handleBulkDeleteLecturers = useCallback(
     async (ids) => {
       if (!Array.isArray(ids) || !ids.length) return;
+      logAction(
+        userEmail,
+        "delete",
+        "lecturer",
+        ids.join(", "),
+        `${ids.length} dosen`,
+        { count: ids.length, ids },
+      );
       const idSet = new Set(ids);
 
       // 1. Simpan permanen ID dosen yang dihapus di localStorage & bersihkan rating/catatan
@@ -4172,6 +4350,14 @@ export default function App() {
   const handleBulkEditLecturers = useCallback(
     async (ids, updates) => {
       if (!Array.isArray(ids) || !ids.length || !updates) return;
+      logAction(
+        userEmail,
+        "update",
+        "lecturer",
+        ids.join(", "),
+        `${ids.length} dosen`,
+        { count: ids.length, updates },
+      );
       const idSet = new Set(ids);
 
       let updatedLecturersList = [];
@@ -4254,7 +4440,7 @@ export default function App() {
         }
       }
     },
-    [isDemoSession, queueLecturerLabels],
+    [userEmail, isDemoSession, queueLecturerLabels],
   );
 
   const handleRegisterTutor = useCallback(
@@ -4287,6 +4473,13 @@ export default function App() {
         new: submission,
       });
 
+      addNotification({
+        type: "submission",
+        title: "Pengajuan Tutor Baru",
+        message: `${submission.name} telah mengirim formulir kesediaan mengajar (${submission.plotted?.length || 0} MK).`,
+        targetTab: "approvals",
+      });
+
       if (USE_SUPABASE) {
         try {
           await upsertRows("tutor_submissions", [submission], "id");
@@ -4298,7 +4491,76 @@ export default function App() {
     [],
   );
 
+  const handleApplyRestore = useCallback(
+    (restoredData) => {
+      if (!restoredData) return;
+
+      if (Array.isArray(restoredData.lecturers) && restoredData.lecturers.length) {
+        setLecturers(restoredData.lecturers);
+        try {
+          localStorage.setItem(
+            STORED_CUSTOM_LECTURERS_KEY,
+            JSON.stringify(restoredData.lecturers),
+          );
+        } catch {}
+      }
+
+      if (Array.isArray(restoredData.courses) && restoredData.courses.length) {
+        setCourses(restoredData.courses);
+        try {
+          localStorage.setItem("ut_custom_courses", JSON.stringify(restoredData.courses));
+        } catch {}
+      }
+
+      if (Array.isArray(restoredData.terms) && restoredData.terms.length) {
+        setTerms(restoredData.terms);
+        try {
+          localStorage.setItem("ut_custom_terms", JSON.stringify(restoredData.terms));
+        } catch {}
+      }
+
+      if (Array.isArray(restoredData.termPlottings) && restoredData.termPlottings.length) {
+        setTermPlottings(restoredData.termPlottings);
+        try {
+          localStorage.setItem(
+            STORED_CUSTOM_PLOTTINGS_KEY,
+            JSON.stringify(restoredData.termPlottings),
+          );
+        } catch {}
+      }
+
+      if (restoredData.courseClassPlans && typeof restoredData.courseClassPlans === "object") {
+        setCourseClassPlans(restoredData.courseClassPlans);
+        try {
+          localStorage.setItem(
+            "ut_course_class_plans",
+            JSON.stringify(restoredData.courseClassPlans),
+          );
+        } catch {}
+      }
+
+      logAction(
+        userEmail,
+        "restore",
+        "system",
+        "backup_archive",
+        "Pemulihan basis data sistem dari berkas cadangan berhasil diterapkan",
+      );
+
+      addNotification({
+        type: "system",
+        title: "Pemulihan Data Berhasil",
+        message: "Data direktori, katalog, dan alokasi plotting berhasil dipulihkan dari cadangan.",
+      });
+    },
+    [userEmail],
+  );
+
   const props = {
+    userRole,
+    canEdit: can(userRole, "edit_lecturers"),
+    isViewer: userRole === ROLES.VIEWER,
+    readOnly: userRole === ROLES.VIEWER,
     lecturers: pageLecturers,
     directoryLecturers: lecturers,
     setLecturers: pageSetLecturers,
@@ -4307,6 +4569,7 @@ export default function App() {
     setCourses,
     terms,
     setTerms,
+    termPlottings: validTermPlottings,
     setTermPlottings,
     selectedTermCode: effectiveSelectedTermCode,
     courseClassPlans,
@@ -4335,6 +4598,8 @@ export default function App() {
     onRejectSubmission: handleRejectSubmission,
     onDeleteSubmission: handleDeleteSubmission,
     onSyncApprovedToDirectory: handleSyncApprovedToDirectory,
+    exportSuratTugasPDF,
+    exportRekapDosenPDF,
   };
   const pendingLecturerLabelCount = Object.keys(
     pendingLecturerLabelChanges,
@@ -4486,6 +4751,9 @@ export default function App() {
         pendingLecturerLabelCount={pendingLecturerLabelCount}
         isOnline={isOnline}
         realtimeStatus={realtimeStatus}
+        userRole={userRole}
+        onOpenUserManagement={() => setShowUserManagementModal(true)}
+        onOpenBackupRestore={() => setShowBackupModal(true)}
       />
       <main id="main-content" tabIndex={-1} className="min-w-0 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-12 sm:pb-16 outline-none">
         <div className="w-full">
@@ -4575,6 +4843,27 @@ export default function App() {
           handleLogout();
           setEntryMode("login");
         }}
+      />
+
+      {/* User Management Modal for Super Admin */}
+      <UserManagementModal
+        isOpen={showUserManagementModal}
+        onClose={() => setShowUserManagementModal(false)}
+        currentUserEmail={userEmail}
+      />
+
+      {/* Data Backup & Restore Modal */}
+      <BackupRestoreModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        lecturers={lecturers}
+        courses={courses}
+        terms={terms}
+        termPlottings={validTermPlottings}
+        courseClassPlans={courseClassPlans}
+        userEmail={userEmail}
+        selectedTermCode={effectiveSelectedTermCode}
+        onApplyRestore={handleApplyRestore}
       />
 
       {/* Floating Accessibility Widget & Global Keyboard Shortcuts */}

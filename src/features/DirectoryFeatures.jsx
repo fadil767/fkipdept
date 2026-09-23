@@ -21,14 +21,12 @@ import {
 const DEGREE_COLORS = [
   "#005baa", // UT Primary Cobalt Blue
   "#0284c7", // Bright Sky Blue
-  "#6366f1", // Indigo
-  "#f59e0b", // Warm Amber
-  "#10b981", // Emerald
-  "#8b5cf6", // Violet
-  "#ec4899", // Rose Pink
-  "#06b6d4", // Cyan
-  "#f97316", // Coral Orange
-  "#64748b", // Slate
+  "#003e7a", // UT Deep Navy
+  "#d97706", // Warm Amber Accent
+  "#0d9488", // Academic Teal
+  "#475569", // Slate Neutral
+  "#2563eb", // Royal Blue
+  "#b45309", // Deep Gold / Ochre
 ];
 
 export function createDirectoryFeatures(deps) {
@@ -63,6 +61,7 @@ export function createDirectoryFeatures(deps) {
     dedupeImportedLecturers,
     exportLecturerTemplateToXLSX,
     exportLecturersToXLSX,
+    exportSuratTugasPDF,
     getPlottedCountData,
     includes,
     mapImportedLecturers,
@@ -136,7 +135,7 @@ export function createDirectoryFeatures(deps) {
           </div>
           {lecturerNames.length > 0 && (
             <div className="pt-2 border-t border-slate-100">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              <p className="text-[11px] font-semibold text-slate-500 mb-1">
                 Dosen Terdaftar:
               </p>
               <p className="text-[11px] text-slate-600 line-clamp-3 leading-relaxed">
@@ -258,7 +257,7 @@ export function createDirectoryFeatures(deps) {
         {lecturerNames.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-semibold text-slate-500">
                 Contoh Dosen
               </span>
               <span className="text-[10px] font-medium text-slate-400">
@@ -323,6 +322,63 @@ export function createDirectoryFeatures(deps) {
         ),
       [lecturers, courses, filters],
     );
+
+    // KPI Metrics calculation for academic monitoring
+    const kpiData = useMemo(() => {
+      // 1. Top 5 highest workload
+      const topLoad = [...filtered]
+        .sort((a, b) => b.plotted.length - a.plotted.length || (b.rating || 0) - (a.rating || 0))
+        .slice(0, 5);
+
+      // 2. Top 5 highest ratings
+      const topRated = [...filtered]
+        .filter((l) => (l.rating || 0) > 0)
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0) || b.plotted.length - a.plotted.length)
+        .slice(0, 5);
+
+      // 3. Overload alerts
+      const overloads = filtered.filter(
+        (l) => l.plotted.length > 4 || (l.available > 0 && l.plotted.length > l.available),
+      );
+
+      // 4. Expertise match calculation
+      let totalPlotted = 0;
+      let matchedCount = 0;
+      filtered.forEach((lec) => {
+        const exps = (lec.expertise || []).map((e) => String(e).toLowerCase());
+        (lec.plotted || []).forEach((cCode) => {
+          totalPlotted += 1;
+          const cObj = courses.find((c) => c.code === cCode || c.id === cCode);
+          if (cObj) {
+            const title = (cObj.title || cObj.name || "").toLowerCase();
+            const match = exps.some((exp) => {
+              const tokens = exp.split(/\s+/).filter((t) => t.length > 2);
+              return tokens.some((tok) => title.includes(tok));
+            });
+            if (match || exps.length === 0) matchedCount += 1;
+          } else {
+            matchedCount += 1;
+          }
+        });
+      });
+
+      const expertiseMatchPct = totalPlotted > 0 ? Math.round((matchedCount / totalPlotted) * 100) : 100;
+      const averageRating = filtered.filter((l) => (l.rating || 0) > 0).length
+        ? (
+            filtered.reduce((sum, l) => sum + (l.rating || 0), 0) /
+            filtered.filter((l) => (l.rating || 0) > 0).length
+          ).toFixed(1)
+        : "5.0";
+
+      return {
+        topLoad,
+        topRated,
+        overloads,
+        expertiseMatchPct,
+        averageRating,
+      };
+    }, [filtered, courses]);
+
     const [expertiseViewMode, setExpertiseViewMode] = useState("top10");
 
     const expertiseStats = useMemo(() => {
@@ -481,6 +537,9 @@ export function createDirectoryFeatures(deps) {
       () => availableData.reduce((sum, item) => sum + item.available, 0),
       [availableData],
     );
+    const fulfillmentRate = totalAvailableSlots > 0
+      ? Math.min(100, Math.round((totalPlottedClasses / totalAvailableSlots) * 100))
+      : (totalPlottedClasses > 0 ? 100 : 0);
     useEffect(() => {
       const handleScroll = () => {
         if (
@@ -551,74 +610,304 @@ export function createDirectoryFeatures(deps) {
     );
     return (
       <div className="space-y-6">
-        <Card className="dashboard-filter-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#005baa]" />
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#005baa]">
-                Filter Infografis
-              </p>
-              {Object.values(filters).some((v) => v !== "All") && (
-                <span className="rounded-full bg-blue-100 text-[#005baa] px-2 py-0.5 text-[10px] font-bold">
-                  Filter Aktif
-                </span>
-              )}
-            </div>
+        {/* Streamlined Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-2xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-[#005baa]">
+              <Icons.filter className="h-3.5 w-3.5" />
+            </span>
+            <span className="text-xs font-semibold text-slate-800">
+              Saring Data Infografis
+            </span>
+            {Object.values(filters).some((v) => v !== "All") ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200/60 text-[#005baa] px-2.5 py-0.5 text-xs font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#005baa]" />
+                Filter Aktif ({Object.values(filters).filter((v) => v !== "All").length})
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400">Semua Dosen Ditampilkan</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {Object.values(filters).some((v) => v !== "All") && (
+              <button
+                type="button"
+                onClick={() => setFilters({ degree: "All", expertise: "All", plotted: "All", available: "All" })}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 px-2 py-1 transition-colors cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setFilterPanelOpen((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white px-2.5 py-1 text-xs font-bold text-[#102f52] shadow-2xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all cursor-pointer"
             >
-              <span>{filterPanelOpen ? "Sembunyikan Filter" : "Sesuaikan Filter"}</span>
+              <span>{filterPanelOpen ? "Sembunyikan Panel" : "Sesuaikan Parameter"}</span>
               <Icons.chevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${filterPanelOpen ? "rotate-180" : ""}`} />
             </button>
           </div>
-          {filterPanelOpen && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              {filterControls}
+        </div>
+
+        {filterPanelOpen && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs transition-all">
+            {filterControls}
+          </div>
+        )}
+
+        {/* Academic Hero Section: Plotting Fulfillment & Capacity */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          {/* Featured Hero Card (Spans 5 cols on lg) */}
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-blue-200/90 bg-gradient-to-br from-[#005baa] via-[#004b8d] to-[#003e7a] p-5 sm:p-6 text-white shadow-md relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-sky-400/20 blur-2xl" />
+            <div className="pointer-events-none absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-[#ffb800]/15 blur-xl" />
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-sky-100 backdrop-blur-xs border border-white/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffb800] animate-pulse" />
+                  Kesehatan & Keterisian Semester
+                </span>
+                <span className="text-xs font-semibold text-white/80">
+                  {totalPlottedClasses} / {totalAvailableSlots || totalPlottedClasses} Kelas
+                </span>
+              </div>
+
+              <div className="mt-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
+                    {fulfillmentRate}%
+                  </span>
+                  <span className="text-sm font-medium text-sky-200">
+                    kapasitas teralokasi
+                  </span>
+                </div>
+
+                {/* Fulfillment Progress Bar */}
+                <div className="mt-3.5 h-2.5 w-full rounded-full bg-black/25 overflow-hidden p-0.5 border border-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#ffd23f] to-[#ffb800] transition-all duration-500"
+                    style={{ width: `${fulfillmentRate}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-5 pt-4 border-t border-white/15 flex items-center justify-between text-xs text-sky-100">
+              <span>Status Alokasi:</span>
+              <span className={`font-semibold px-2 py-0.5 rounded-md ${
+                fulfillmentRate >= 90
+                  ? "bg-emerald-500/25 text-emerald-200 border border-emerald-400/30"
+                  : fulfillmentRate >= 70
+                  ? "bg-amber-500/25 text-amber-200 border border-amber-400/30"
+                  : "bg-white/15 text-sky-100"
+              }`}>
+                {fulfillmentRate >= 95 ? "Plotting Lengkap" : fulfillmentRate >= 70 ? "Plotting Berjalan" : "Perlu Alokasi Lanjutan"}
+              </span>
+            </div>
+          </div>
+
+          {/* Secondary Stat Cards (Spans 7 cols on lg in a 3-col grid) */}
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-600">Total Dosen</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-[#005baa]">
+                    <Icons.users className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className="font-display text-3xl font-extrabold text-[#102f52] tracking-tight">
+                  {filtered.length}
+                </p>
+              </div>
+              <p className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-slate-400">
+                Dosen terdaftar di direktori
+              </p>
+            </div>
+
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-600">Slot Tersedia</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                    <Icons.chart className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className="font-display text-3xl font-extrabold text-[#102f52] tracking-tight">
+                  {totalAvailableSlots}
+                </p>
+              </div>
+              <p className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-slate-400">
+                Batas kesediaan tutor
+              </p>
+            </div>
+
+            <div className="flex flex-col justify-between rounded-2xl border border-amber-200/70 bg-gradient-to-br from-[#fffdf5] to-[#fff9df] p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-amber-900">Rata-rata Beban</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#ffb800]/25 text-amber-800">
+                    <Icons.check className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className="font-display text-3xl font-extrabold text-[#102f52] tracking-tight">
+                  {filtered.length
+                    ? (totalPlottedClasses / filtered.length).toFixed(1)
+                    : "0"}
+                </p>
+              </div>
+              <p className="mt-3 pt-2.5 border-t border-amber-200/50 text-[11px] text-amber-800/80">
+                Kelas per dosen (target ≤ 4)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section: Indikator Kinerja Dosen (KPI) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-[#005baa] dark:bg-blue-950 dark:text-cyan-400">
+                <Icons.chart className="h-3.5 w-3.5" />
+              </span>
+              <h3 className="text-sm font-bold text-[#102f52] dark:text-slate-100">
+                Indikator Kinerja & Beban Dosen (KPI)
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-bold text-[#005baa] dark:bg-blue-950/60 dark:text-cyan-300">
+                Kesesuaian Keahlian: {kpiData.expertiseMatchPct}%
+              </span>
+              <span className="rounded-full bg-amber-50 px-2.5 py-0.5 font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                Rating Rata-rata: {kpiData.averageRating} ★
+              </span>
+            </div>
+          </div>
+
+          {/* Overload Alert (if any) */}
+          {kpiData.overloads.length > 0 && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30 max-w-4xl">
+              <Icons.warning className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <strong className="text-amber-900 dark:text-amber-200">
+                  Perhatian Beban Berlebih ({kpiData.overloads.length} Dosen):
+                </strong>
+                <p className="mt-0.5 text-amber-800 dark:text-amber-300/90 leading-relaxed max-w-prose">
+                  Dosen berikut memiliki alokasi di atas batas standar ({kpiData.overloads.map((l) => `${l.name} (${l.plotted.length} kelas)`).join(", ")}). Pertimbangkan untuk mendistribusikan kelas ke dosen lain.
+                </p>
+              </div>
             </div>
           )}
-        </Card>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <Stat
-            label="Total Dosen"
-            value={filtered.length}
-            icon={Icons.users}
-          />
-          <Stat
-            label="Total Kelas Terplot"
-            value={filtered.reduce(
-              (sum, lecturer) => sum + lecturer.plotted.length,
-              0,
-            )}
-            icon={Icons.book}
-            note="Hasil filter"
-          />
-          <Stat
-            label="Total Slot Tersedia"
-            value={filtered.reduce(
-              (sum, lecturer) => sum + lecturer.available,
-              0,
-            )}
-            icon={Icons.chart}
-          />
-          <Stat
-            label="Rata-rata Plotting / Dosen"
-            value={
-              filtered.length
-                ? (
-                    filtered.reduce(
-                      (sum, lecturer) => sum + lecturer.plotted.length,
-                      0,
-                    ) / filtered.length
-                  ).toFixed(1)
-                : "0"
-            }
-            icon={Icons.check}
-            tone="amber"
-            note="Rentang 0–4"
-          />
+
+          {/* Top 5 Load & Top 5 Rating Side-by-Side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top 5 Beban Mengajar */}
+            <Card className="p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+                      <Icons.book className="h-3.5 w-3.5" />
+                    </span>
+                    <h4 className="text-xs font-bold text-[#102f52] dark:text-slate-100">
+                      Top 5 Dosen Beban Mengajar
+                    </h4>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Berdasarkan kelas terplot
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {kpiData.topLoad.map((lec, idx) => {
+                    const maxCap = Math.max(4, lec.available || 4);
+                    const pct = Math.min(100, Math.round((lec.plotted.length / maxCap) * 100));
+                    return (
+                      <div key={lec.id} className="text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 truncate pr-2">
+                            <span className="w-4 shrink-0 text-xs font-bold text-slate-400 text-right">
+                              {idx + 1}.
+                            </span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {lec.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0">
+                              {lec.degree}
+                            </span>
+                          </div>
+                          <span className="shrink-0 font-black text-[#005baa] dark:text-cyan-400">
+                            {lec.plotted.length} Kelas
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              lec.plotted.length > 4
+                                ? "bg-rose-500"
+                                : lec.plotted.length === 4
+                                ? "bg-amber-500"
+                                : "bg-indigo-600"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Card>
+
+            {/* Top 5 Rating Evaluasi */}
+            <Card className="p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                      <Icons.star className="h-3.5 w-3.5" />
+                    </span>
+                    <h4 className="text-xs font-bold text-[#102f52] dark:text-slate-100">
+                      Top 5 Rating Kepuasan & Kinerja
+                    </h4>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Evaluasi mahasiswa & prodi
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {kpiData.topRated.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-4 text-center">
+                      Belum ada penilaian rating tersimpan
+                    </p>
+                  ) : (
+                    kpiData.topRated.map((lec, idx) => (
+                      <div key={lec.id} className="flex items-center justify-between text-xs py-0.5">
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <span className="w-4 shrink-0 text-xs font-bold text-slate-400 text-right">
+                            {idx + 1}.
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                            {lec.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            ({lec.plotted.length} kelas)
+                          </span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0">
+                          {Number(lec.rating || 0).toFixed(1)} ★
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
+
         <div className="grid gap-6 md:grid-cols-2">
           {/* Card 1: Berdasarkan Gelar Akademik */}
           <Card className="p-5 flex flex-col justify-between">
@@ -662,7 +951,7 @@ export function createDirectoryFeatures(deps) {
                     <span className="text-2xl font-black tracking-tight text-[#102f52]">
                       {filtered.length}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-[11px] font-semibold text-slate-500">
                       Total Dosen
                     </span>
                   </div>
@@ -763,7 +1052,7 @@ export function createDirectoryFeatures(deps) {
                     <span className="text-2xl font-black tracking-tight text-[#102f52]">
                       {filtered.length}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-[11px] font-semibold text-slate-500">
                       Total Dosen
                     </span>
                   </div>
@@ -1316,12 +1605,19 @@ export function createDirectoryFeatures(deps) {
 
   function LecturerInfoCard({ lecturer, courses, onRatingChange }) {
     const hasContact = Boolean(lecturer.email || lecturer.phone);
+    const totalSksLecturer = (lecturer.plotted || []).reduce((sum, code) => {
+      const found = courses.find((c) => c.code === code || c.id === code);
+      return sum + (found?.sks ? Number(found.sks) : 3);
+    }, 0);
+    const maxSlots = Math.max(1, lecturer.available || 4);
+    const utilizationPct = Math.round(((lecturer.plotted?.length || 0) / maxSlots) * 100);
+
     return (
       <div className="space-y-5">
         <div className="rounded-2xl bg-blue-50 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-700">
+              <p className="text-xs font-semibold text-[#005baa]">
                 Profil Dosen
               </p>
               <h3 className="mt-2 text-2xl font-medium text-slate-950">
@@ -1343,11 +1639,82 @@ export function createDirectoryFeatures(deps) {
             </Badge>
           </div>
         </div>
+
+        {/* KPI Workload & Capacity Card */}
+        <div className="rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/70 to-slate-50 p-4 dark:border-slate-800 dark:from-slate-800/60 dark:to-slate-900/60">
+          <div className="flex items-center justify-between border-b border-blue-100/60 pb-2.5 mb-3 dark:border-slate-700/60">
+            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              Indikator Kinerja & Beban (KPI)
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                lecturer.plotted.length > 4
+                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                  : lecturer.plotted.length >= 1
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              {lecturer.plotted.length > 4
+                ? "⚠️ Overload (>4 Kelas)"
+                : lecturer.plotted.length >= 1
+                ? "✓ Beban Wajar"
+                : "Belum Ada Beban"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-white/80 p-2 shadow-2xs dark:bg-slate-800/80">
+              <span className="block text-base font-black text-[#102f52] dark:text-slate-100">
+                {lecturer.plotted.length}
+              </span>
+              <span className="text-[10px] text-slate-500">Kelas Terplot</span>
+            </div>
+            <div className="rounded-xl bg-white/80 p-2 shadow-2xs dark:bg-slate-800/80">
+              <span className="block text-base font-black text-[#102f52] dark:text-slate-100">
+                {totalSksLecturer}
+              </span>
+              <span className="text-[10px] text-slate-500">Total SKS</span>
+            </div>
+            <div className="rounded-xl bg-white/80 p-2 shadow-2xs dark:bg-slate-800/80">
+              <span className="block text-base font-black text-amber-600 dark:text-amber-400">
+                {lecturer.rating ? `${Number(lecturer.rating).toFixed(1)} ★` : "5.0 ★"}
+              </span>
+              <span className="text-[10px] text-slate-500">Evaluasi Kinerja</span>
+            </div>
+          </div>
+
+          {/* Workload utilization bar */}
+          <div className="mt-3">
+            <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              <span>Utilisasi Kapasitas Mengajar</span>
+              <span>{Math.round(((lecturer.plotted?.length || 0) / Math.max(1, lecturer.available || 4)) * 100)}% ({lecturer.plotted.length} / {lecturer.available || 4} slot)</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  lecturer.plotted.length > 4
+                    ? "bg-rose-500"
+                    : lecturer.plotted.length >= 3
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+                }`}
+                style={{
+                  width: `${Math.min(
+                    100,
+                    Math.round(((lecturer.plotted?.length || 0) / Math.max(1, lecturer.available || 4)) * 100),
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
         {hasContact && (
           <div className="grid gap-4 sm:grid-cols-2">
             {lecturer.email && (
               <Card className="p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-xs font-semibold text-slate-600">
                   Email
                 </p>
                 <p className="mt-2 text-sm font-normal text-slate-800">
@@ -1357,7 +1724,7 @@ export function createDirectoryFeatures(deps) {
             )}
             {lecturer.phone && (
               <Card className="p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-xs font-semibold text-slate-600">
                   Nomor Telepon
                 </p>
                 <p className="mt-2 text-sm font-normal text-slate-800">
@@ -1368,7 +1735,7 @@ export function createDirectoryFeatures(deps) {
           </div>
         )}
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+          <p className="text-xs font-semibold text-slate-600">
             Bidang Keahlian
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1382,7 +1749,7 @@ export function createDirectoryFeatures(deps) {
           </div>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+          <p className="text-xs font-semibold text-slate-600">
             Mata Kuliah Terplot
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1398,6 +1765,20 @@ export function createDirectoryFeatures(deps) {
             )}
           </div>
         </Card>
+        <div className="flex justify-end pt-2">
+          <Button
+            variant="secondary"
+            className="border-[#005baa]/30 text-[#005baa] hover:bg-blue-50 text-xs font-bold"
+            onClick={() => {
+              if (typeof exportSuratTugasPDF === "function") {
+                exportSuratTugasPDF(lecturer, courses, { code: selectedTermCode });
+              }
+            }}
+          >
+            <Icons.file className="h-4 w-4 mr-1.5 text-[#005baa]" />
+            Unduh Surat Tugas PDF
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1630,8 +2011,11 @@ export function createDirectoryFeatures(deps) {
     setLecturers,
     setTermLecturers,
     courses,
+    terms = [],
     selectedTermCode,
     canSyncData = true,
+    canEdit = true,
+    readOnly = false,
     onLecturerLabelChange,
     onDiscardLecturerLabelChange,
     onDeleteLecturer,
@@ -2407,25 +2791,27 @@ export function createDirectoryFeatures(deps) {
                   />
                   <div className="absolute right-0 mt-2 z-50 w-72 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl shadow-slate-900/20 ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-3 py-2 border-b border-slate-100">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Impor & Ekspor Data</p>
+                      <p className="text-xs font-semibold text-slate-600">Impor & Ekspor Data</p>
                     </div>
                     <div className="p-1 space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFileMenuOpen(false);
-                          importInputRef.current?.click();
-                        }}
-                        className="w-full flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-[#005baa] group-hover:text-white transition-colors">
-                          <Icons.upload className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 group-hover:text-[#005baa]">Impor CSV / XLSX</p>
-                          <p className="text-[11px] font-normal text-slate-400 truncate">Unggah daftar dosen dari spreadsheet</p>
-                        </div>
-                      </button>
+                      {!readOnly && canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFileMenuOpen(false);
+                            importInputRef.current?.click();
+                          }}
+                          className="w-full flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-[#005baa] transition-colors cursor-pointer text-left group"
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-[#005baa] group-hover:text-white transition-colors">
+                            <Icons.upload className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 group-hover:text-[#005baa]">Impor CSV / XLSX</p>
+                            <p className="text-[11px] font-normal text-slate-400 truncate">Unggah daftar dosen dari spreadsheet</p>
+                          </div>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -2472,15 +2858,23 @@ export function createDirectoryFeatures(deps) {
               )}
             </div>
 
-            <Button
-              className="h-11 px-4 font-bold shadow-xs"
-              onClick={() => setModal({})}
-            >
-              <Icons.plus className="h-4 w-4" />
-              Tambah Dosen
-            </Button>
+            {!readOnly && canEdit && (
+              <Button
+                className="h-11 px-4 font-bold shadow-xs"
+                onClick={() => setModal({})}
+              >
+                <Icons.plus className="h-4 w-4" />
+                Tambah Dosen
+              </Button>
+            )}
           </div>
         </div>
+        {readOnly && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            <Icons.eye className="h-4 w-4 text-slate-500 shrink-0" />
+            <span><strong>Mode Hanya Lihat:</strong> Anda sedang melihat direktori dosen dalam mode pengamat. Penambahan, pengeditan, atau penghapusan data dibatasi untuk peran Administrator.</span>
+          </div>
+        )}
         {importMessage && (
           <p
             className={`rounded-xl px-3 py-2 text-sm font-normal ${/^(Berhasil|Ekspor dimulai|Imported|Export started)/.test(importMessage) ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
@@ -2744,37 +3138,55 @@ export function createDirectoryFeatures(deps) {
                       type="button"
                       title="Lihat profil detail dosen"
                       onClick={() => setViewing(lecturer)}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#005baa] hover:bg-blue-50 transition cursor-pointer"
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
                     >
                       <Icons.eye className="h-4 w-4" />
                       <span>Profil</span>
                     </button>
                     <button
                       type="button"
-                      title="Edit data dosen"
+                      title="Unduh Surat Tugas Tutorial PDF"
                       onClick={() => {
-                        const directoryLecturer = directoryById.get(lecturer.id) || lecturer;
-                        setModal({
-                          ...directoryLecturer,
-                          available: lecturer.available,
-                          plotted: lecturer.plotted,
-                          expertiseText: directoryLecturer.expertise.join(", "),
-                        });
+                        const currentTerm = (terms || []).find((t) => t.code === selectedTermCode) || terms?.[0];
+                        if (typeof exportSuratTugasPDF === "function") {
+                          exportSuratTugasPDF(lecturer, courses, currentTerm);
+                        }
                       }}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#005baa] hover:bg-blue-50 transition cursor-pointer"
                     >
-                      <Icons.edit className="h-4 w-4" />
-                      <span>Edit</span>
+                      <Icons.file className="h-4 w-4" />
+                      <span>Surat Tugas</span>
                     </button>
-                    <button
-                      type="button"
-                      title="Hapus dosen"
-                      onClick={() => setDeleteTarget(lecturer)}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
-                    >
-                      <Icons.trash className="h-4 w-4" />
-                      <span>Hapus</span>
-                    </button>
+                    {!readOnly && canEdit && (
+                      <>
+                        <button
+                          type="button"
+                          title="Edit data dosen"
+                          onClick={() => {
+                            const directoryLecturer = directoryById.get(lecturer.id) || lecturer;
+                            setModal({
+                              ...directoryLecturer,
+                              available: lecturer.available,
+                              plotted: lecturer.plotted,
+                              expertiseText: directoryLecturer.expertise.join(", "),
+                            });
+                          }}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                        >
+                          <Icons.edit className="h-4 w-4" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          title="Hapus dosen"
+                          onClick={() => setDeleteTarget(lecturer)}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
+                        >
+                          <Icons.trash className="h-4 w-4" />
+                          <span>Hapus</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -2786,7 +3198,7 @@ export function createDirectoryFeatures(deps) {
             {tableViewMode === "unified" ? (
             <div className="w-full overflow-hidden">
               <table className="w-full text-left text-sm table-auto">
-                <thead className="bg-slate-50/90 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 border-b border-slate-200/70">
+                <thead className="bg-slate-50/90 text-xs font-semibold text-slate-600 border-b border-slate-200/80">
                   <tr>
                     <th className="px-3 py-3.5 w-10 text-center">
                       <input
@@ -2958,30 +3370,47 @@ export function createDirectoryFeatures(deps) {
                             </button>
                             <button
                               type="button"
-                              title="Edit data dosen"
+                              title="Unduh Surat Tugas Tutorial PDF"
                               onClick={() => {
-                                const directoryLecturer =
-                                  directoryById.get(lecturer.id) || lecturer;
-                                setModal({
-                                  ...directoryLecturer,
-                                  available: lecturer.available,
-                                  plotted: lecturer.plotted,
-                                  expertiseText:
-                                    directoryLecturer.expertise.join(", "),
-                                });
+                                const currentTerm = (terms || []).find((t) => t.code === selectedTermCode) || terms?.[0];
+                                if (typeof exportSuratTugasPDF === "function") {
+                                  exportSuratTugasPDF(lecturer, courses, currentTerm);
+                                }
                               }}
-                              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+                              className="rounded-lg p-1.5 text-indigo-600 hover:bg-indigo-50 transition"
                             >
-                              <Icons.edit className="h-4 w-4" />
+                              <Icons.file className="h-4 w-4" />
                             </button>
-                            <button
-                              type="button"
-                              title="Hapus dosen"
-                              onClick={() => setDeleteTarget(lecturer)}
-                              className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
-                            >
-                              <Icons.trash className="h-4 w-4" />
-                            </button>
+                            {!readOnly && canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  title="Edit data dosen"
+                                  onClick={() => {
+                                    const directoryLecturer =
+                                      directoryById.get(lecturer.id) || lecturer;
+                                    setModal({
+                                      ...directoryLecturer,
+                                      available: lecturer.available,
+                                      plotted: lecturer.plotted,
+                                      expertiseText:
+                                        directoryLecturer.expertise.join(", "),
+                                    });
+                                  }}
+                                  className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+                                >
+                                  <Icons.edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Hapus dosen"
+                                  onClick={() => setDeleteTarget(lecturer)}
+                                  className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
+                                >
+                                  <Icons.trash className="h-4 w-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -3007,7 +3436,7 @@ export function createDirectoryFeatures(deps) {
               {/* Table Container */}
               <div ref={tableContainerRef} className="overflow-x-auto relative">
                 <table className="w-full min-w-[1060px] text-left text-sm">
-                  <thead className="bg-slate-50/90 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 border-b border-slate-200/70">
+                  <thead className="bg-slate-50/90 text-xs font-semibold text-slate-600 border-b border-slate-200/80">
                     <tr>
                       <th className="px-3 py-3 w-10 text-center">
                         <input
@@ -3141,32 +3570,36 @@ export function createDirectoryFeatures(deps) {
                               >
                                 <Icons.eye className="h-4 w-4" />
                               </button>
-                              <button
-                                type="button"
-                                title="Edit data dosen"
-                                onClick={() => {
-                                  const directoryLecturer =
-                                    directoryById.get(lecturer.id) || lecturer;
-                                  setModal({
-                                    ...directoryLecturer,
-                                    available: lecturer.available,
-                                    plotted: lecturer.plotted,
-                                    expertiseText:
-                                      directoryLecturer.expertise.join(", "),
-                                  });
-                                }}
-                                className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
-                              >
-                                <Icons.edit className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                title="Hapus dosen"
-                                onClick={() => setDeleteTarget(lecturer)}
-                                className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
-                              >
-                                <Icons.trash className="h-4 w-4" />
-                              </button>
+                              {!readOnly && canEdit && (
+                                <>
+                                  <button
+                                    type="button"
+                                    title="Edit data dosen"
+                                    onClick={() => {
+                                      const directoryLecturer =
+                                        directoryById.get(lecturer.id) || lecturer;
+                                      setModal({
+                                        ...directoryLecturer,
+                                        available: lecturer.available,
+                                        plotted: lecturer.plotted,
+                                        expertiseText:
+                                          directoryLecturer.expertise.join(", "),
+                                      });
+                                    }}
+                                    className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+                                  >
+                                    <Icons.edit className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Hapus dosen"
+                                    onClick={() => setDeleteTarget(lecturer)}
+                                    className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
+                                  >
+                                    <Icons.trash className="h-4 w-4" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>

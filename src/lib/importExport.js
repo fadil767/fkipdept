@@ -879,6 +879,10 @@ export function createImportExportTools(deps) {
 </body>
 </html>`;
 
+    return openPrintDocument(html);
+  }
+
+  function openPrintDocument(html) {
     let printWin = null;
     try {
       printWin = window.open("", "_blank");
@@ -934,6 +938,682 @@ export function createImportExportTools(deps) {
       return { success: true, method: "pdf-iframe" };
     }
     return { success: true, method: "pdf-print" };
+  }
+
+  function exportSuratTugasPDF(lecturer, courses, currentTerm, options = {}) {
+    if (!lecturer) return;
+    const courseByCode = new Map((courses || []).map((c) => [c.code, c]));
+    const termLabel = currentTerm
+      ? `${currentTerm.name || currentTerm.code} (Tahun Akademik ${currentTerm.ay || "2026/2027"}, Semester ${currentTerm.semester || "Ganjil"})`
+      : "Semester 2026/2027 Ganjil";
+
+    const printDate = options.issueDate || new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const letterNumber = options.suratNumber || `B/${Math.floor(1000 + Math.random() * 9000)}/UN31.FKIP/PP.01.00/${new Date().getFullYear()}`;
+
+    const plottedCodes = lecturer.plotted || [];
+    const courseRows = [];
+    let totalCredits = 0;
+
+    plottedCodes.forEach((code, idx) => {
+      const course = courseByCode.get(code);
+      const credits = Number(course?.credits || 3);
+      totalCredits += credits;
+      courseRows.push({
+        no: idx + 1,
+        code,
+        title: course?.title || "Mata Kuliah Tutorial",
+        credits,
+        classLabel: `${code}.${idx + 1}`,
+        mode: "Tutorial Webinar (Tuweb) / TTM",
+      });
+    });
+
+    const rowsHtml = courseRows.length > 0
+      ? courseRows.map((r) => `
+        <tr>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: center; font-size: 11px;">${r.no}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; font-family: monospace; font-size: 11px; font-weight: bold; color: #005baa; text-align: center;">${r.code}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; font-size: 11px; font-weight: 600; color: #0f172a;">${r.title}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: center; font-size: 11px; font-weight: bold;">${r.credits} SKS</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: center; font-family: monospace; font-size: 11px;">${r.classLabel}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; font-size: 11px; color: #475569;">${r.mode}</td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="6" style="border: 1px solid #cbd5e1; padding: 14px; text-align: center; color: #64748b; font-style: italic;">Belum ada alokasi mata kuliah terplot untuk dosen ini pada semester aktif.</td></tr>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Surat Tugas Tutorial - ${lecturer.name}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 15mm 20mm 15mm 20mm;
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      color: #0f172a;
+      line-height: 1.45;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+    .print-bar {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 9999;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+    }
+    .print-bar span {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .print-bar-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .print-btn {
+      background: #005baa;
+      color: #ffffff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .print-btn:hover {
+      background: #004580;
+    }
+    .close-btn {
+      background: #334155;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .close-btn:hover {
+      background: #475569;
+    }
+    .content-wrap {
+      padding: 24px 30px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2.5px solid #000;
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #000;
+    }
+    .header-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .header-text {
+      flex: 1;
+      text-align: center;
+    }
+    .header-text h3 {
+      font-size: 12px;
+      margin: 0;
+      font-weight: normal;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .header-text h2 {
+      font-size: 15px;
+      margin: 2px 0;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #005baa;
+    }
+    .header-text h1 {
+      font-size: 14px;
+      margin: 2px 0;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .header-text p {
+      font-size: 10px;
+      margin: 2px 0 0;
+      color: #334155;
+      font-family: Arial, sans-serif;
+    }
+    .doc-title {
+      text-align: center;
+      margin: 24px 0 16px;
+    }
+    .doc-title h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-decoration: underline;
+      letter-spacing: 0.8px;
+    }
+    .doc-title p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+      color: #1e293b;
+    }
+    .text-body {
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: justify;
+      margin: 14px 0;
+    }
+    .info-table {
+      width: 100%;
+      margin: 12px 0 16px 15px;
+      font-size: 12px;
+      border-collapse: collapse;
+    }
+    .info-table td {
+      padding: 3px 0;
+      vertical-align: top;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Arial, sans-serif;
+      margin: 16px 0;
+    }
+    .data-table th {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #1e293b;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .diktum-list {
+      margin: 12px 0 20px 20px;
+      padding: 0;
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+    .diktum-list li {
+      margin-bottom: 6px;
+    }
+    .signature-wrap {
+      margin-top: 36px;
+      display: flex;
+      justify-content: flex-end;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      width: 250px;
+      text-align: center;
+      font-size: 12px;
+    }
+    .stamp-badge {
+      display: inline-block;
+      border: 2px dashed #005baa;
+      color: #005baa;
+      padding: 3px 8px;
+      font-size: 9px;
+      font-family: Arial, sans-serif;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 6px;
+      border-radius: 4px;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+      }
+      .content-wrap {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar no-print">
+    <span>📄 Pratinjau Surat Tugas Tutorial FKIP UT — ${lecturer.name}</span>
+    <div class="print-bar-actions">
+      <button class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+      <button class="close-btn" onclick="window.close()">Tutup Pratinjau</button>
+    </div>
+  </div>
+
+  <div class="content-wrap">
+    <div class="header">
+      <img src="/logo.png" class="header-logo" alt="Logo UT" onerror="this.style.display='none'" />
+      <div class="header-text">
+        <h3>KEMENTERIAN PENDIDIKAN TINGGI, SAINS, DAN TEKNOLOGI</h3>
+        <h2>UNIVERSITAS TERBUKA</h2>
+        <h1>FAKULTAS KEGURUAN DAN ILMU PENDIDIKAN (FKIP)</h1>
+        <p>Jalan Cabe Raya, Pondok Cabe, Pamulang, Tangerang Selatan 15418, Banten</p>
+        <p>Telepon: (021) 7490941 | Laman: www.ut.ac.id | Pos-el: fkip@ecampus.ut.ac.id</p>
+      </div>
+    </div>
+
+    <div class="doc-title">
+      <h4>SURAT PENUGASAN TUTOR TUTORIAL</h4>
+      <p>Nomor: ${letterNumber}</p>
+    </div>
+
+    <p class="text-body">
+      Dekan Fakultas Keguruan dan Ilmu Pendidikan Universitas Terbuka dengan ini memberikan penugasan akademik kepada:
+    </p>
+
+    <table class="info-table">
+      <tr>
+        <td style="width: 25%; font-weight: bold;">Nama Lengkap & Gelar</td>
+        <td style="width: 3%;">:</td>
+        <td style="width: 72%;"><strong>${lecturer.name}${lecturer.degree ? `, ${lecturer.degree}` : ""}</strong></td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold;">Nomor Induk / ID Tutor</td>
+        <td>:</td>
+        <td style="font-family: monospace; font-weight: bold; color: #005baa;">${lecturer.id}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold;">Bidang Kepakaran</td>
+        <td>:</td>
+        <td>${(lecturer.expertise || []).join(", ") || "Bidang Pendidikan / Terkait"}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold;">Status Penugasan</td>
+        <td>:</td>
+        <td>Tutor Pengampu Mata Kuliah Tutorial (${termLabel})</td>
+      </tr>
+    </table>
+
+    <p class="text-body">
+      Untuk melaksanakan tugas tutorial mata kuliah pada semester berjalan dengan rincian sebagai berikut:
+    </p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 5%;">No</th>
+          <th style="width: 14%;">Kode MK</th>
+          <th style="width: 40%;">Nama Mata Kuliah</th>
+          <th style="width: 12%;">Bobot</th>
+          <th style="width: 14%;">Kelas Tutorial</th>
+          <th style="width: 15%;">Moda</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+      ${courseRows.length > 0 ? `
+      <tfoot>
+        <tr style="background: #f8fafc; font-weight: bold; font-family: Arial, sans-serif; font-size: 11px;">
+          <td colspan="3" style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: right;">Total Beban Penugasan:</td>
+          <td style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: center; color: #005baa;">${totalCredits} SKS</td>
+          <td colspan="2" style="border: 1px solid #cbd5e1; padding: 7px 10px; text-align: left; color: #0f172a;">${courseRows.length} Kelas Tutorial</td>
+        </tr>
+      </tfoot>
+      ` : ""}
+    </table>
+
+    <p class="text-body" style="margin-bottom: 4px;">
+      Dalam menjalankan penugasan ini, Saudara/i berkewajiban untuk:
+    </p>
+    <ol class="diktum-list">
+      <li>Menyusun dan mengunggah Rancangan Aktivitas Tutorial (RAT) dan Satuan Aktivitas Tutorial (SAT) sesuai standar pedoman FKIP UT.</li>
+      <li>Melaksanakan 8 (delapan) sesi pertemuan tutorial secara terjadwal, interaktif, dan terdokumentasi dengan baik.</li>
+      <li>Memberikan dan memeriksa 3 (tiga) Tugas Tutorial (Tugas 1, 2, dan 3) secara objektif serta memberikan umpan balik konstruktif.</li>
+      <li>Mengunggah rekapitulasi nilai akhir tutorial ke dalam sistem e-Kampus UT sebelum batas waktu yang telah ditetapkan.</li>
+    </ol>
+
+    <p class="text-body">
+      Surat penugasan ini dibuat untuk dilaksanakan dengan penuh rasa tanggung jawab dan dedikasi demi kelancaran proses pembelajaran mahasiswa Universitas Terbuka.
+    </p>
+
+    <div class="signature-wrap">
+      <div class="signature-box">
+        <p style="margin: 0;">Tangerang Selatan, ${printDate}</p>
+        <p style="margin: 4px 0 0; font-weight: bold;">Dekan FKIP Universitas Terbuka</p>
+        <div style="height: 60px; display: flex; align-items: center; justify-content: center;">
+          <span class="stamp-badge">✓ Dokumen Resmi FKIP UT Terverifikasi</span>
+        </div>
+        <p style="margin: 0; font-weight: bold; text-decoration: underline;">Prof. Dr. H. Udan, M.Pd.</p>
+        <p style="margin: 2px 0 0; font-family: monospace; font-size: 10px; color: #475569;">NIP 196805121993031002</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 400);
+    };
+  </script>
+</body>
+</html>`;
+
+    return openPrintDocument(html);
+  }
+
+  function exportRekapDosenPDF(lecturers = [], courses = [], currentTerm) {
+    if (!lecturers || !lecturers.length) return;
+    const courseByCode = new Map((courses || []).map((c) => [c.code, c]));
+    const termLabel = currentTerm
+      ? `${currentTerm.name || currentTerm.code} (Tahun Akademik ${currentTerm.ay || "2026/2027"}, Semester ${currentTerm.semester || "Ganjil"})`
+      : "Semester 2026/2027 Ganjil";
+
+    const printDate = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    let totalClassesPlotted = 0;
+    const rowsHtml = lecturers.map((lecturer, idx) => {
+      const plotted = lecturer.plotted || [];
+      totalClassesPlotted += plotted.length;
+      const courseTitles = plotted.map((code) => {
+        const c = courseByCode.get(code);
+        return c ? `${code} (${c.title})` : code;
+      }).join(", ");
+
+      const cap = Number(lecturer.available || 3);
+      const isOverload = plotted.length > cap;
+      const isOptimal = plotted.length === cap;
+      const statusLabel = isOverload ? "Overload" : isOptimal ? "Optimal" : `${cap - plotted.length} Bebas`;
+      const statusColor = isOverload ? "#991b1b" : isOptimal ? "#92400e" : "#166534";
+      const statusBg = isOverload ? "#fef2f2" : isOptimal ? "#fffbeb" : "#f0fdf4";
+
+      return `
+        <tr style="background-color: ${idx % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px;">${idx + 1}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-family: monospace; font-size: 11px; text-align: center; color: #005baa; font-weight: bold;">${lecturer.id}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; font-weight: bold; color: #0f172a;">${lecturer.name}${lecturer.degree ? ` (${lecturer.degree})` : ""}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 10.5px; color: #475569;">${(lecturer.expertise || []).join(", ") || "-"}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; color: #1e293b;">${courseTitles || "<em style='color:#94a3b8;'>Belum ada kelas terplot</em>"}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-weight: bold; font-size: 11px;">${plotted.length}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px;">${cap}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 10px; font-weight: bold; color: ${statusColor}; background: ${statusBg};">${statusLabel}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const avgWorkload = (totalClassesPlotted / (lecturers.length || 1)).toFixed(1);
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Rekapitulasi Penugasan & Beban Mengajar Dosen FKIP UT - ${termLabel}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 12mm 15mm 15mm 15mm;
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      color: #0f172a;
+      line-height: 1.3;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+    .print-bar {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 9999;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+    }
+    .print-bar span {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .print-bar-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .print-btn {
+      background: #005baa;
+      color: #ffffff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .close-btn {
+      background: #334155;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .content-wrap {
+      padding: 20px 25px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2.5px solid #000;
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #000;
+    }
+    .header-logo {
+      width: 65px;
+      height: 65px;
+      object-fit: contain;
+    }
+    .header-text {
+      flex: 1;
+      text-align: center;
+    }
+    .header-text h3 {
+      font-size: 12px;
+      margin: 0;
+      font-weight: normal;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .header-text h2 {
+      font-size: 15px;
+      margin: 2px 0;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #005baa;
+    }
+    .header-text h1 {
+      font-size: 14px;
+      margin: 2px 0;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .header-text p {
+      font-size: 10px;
+      margin: 2px 0 0;
+      color: #334155;
+      font-family: Arial, sans-serif;
+    }
+    .doc-title {
+      text-align: center;
+      margin: 16px 0 12px;
+    }
+    .doc-title h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-decoration: underline;
+    }
+    .doc-title p {
+      margin: 3px 0 0;
+      font-size: 11px;
+      font-family: Arial, sans-serif;
+      color: #475569;
+    }
+    .meta-table {
+      width: 100%;
+      margin-bottom: 12px;
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      border-collapse: collapse;
+    }
+    .meta-table td {
+      padding: 3px 0;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Arial, sans-serif;
+      margin-bottom: 24px;
+    }
+    .data-table th {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 7px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #1e293b;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+      }
+      .content-wrap {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar no-print">
+    <span>📄 Pratinjau Rekapitulasi Beban Mengajar Dosen FKIP UT</span>
+    <div class="print-bar-actions">
+      <button class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+      <button class="close-btn" onclick="window.close()">Tutup Pratinjau</button>
+    </div>
+  </div>
+
+  <div class="content-wrap">
+    <div class="header">
+      <img src="/logo.png" class="header-logo" alt="Logo UT" onerror="this.style.display='none'" />
+      <div class="header-text">
+        <h3>KEMENTERIAN PENDIDIKAN TINGGI, SAINS, DAN TEKNOLOGI</h3>
+        <h2>UNIVERSITAS TERBUKA</h2>
+        <h1>FAKULTAS KEGURUAN DAN ILMU PENDIDIKAN (FKIP)</h1>
+        <p>Jalan Cabe Raya, Pondok Cabe, Pamulang, Tangerang Selatan 15418, Banten</p>
+      </div>
+    </div>
+
+    <div class="doc-title">
+      <h4>REKAPITULASI PENUGASAN & BEBAN MENGAJAR TUTOR</h4>
+      <p>PROGRAM STUDI FAKULTAS KEGURUAN DAN ILMU PENDIDIKAN (FKIP)</p>
+    </div>
+
+    <table class="meta-table">
+      <tr>
+        <td style="width: 18%; font-weight: bold;">Semester / Periode</td>
+        <td style="width: 2%;">:</td>
+        <td style="width: 45%;">${termLabel}</td>
+        <td style="width: 15%; font-weight: bold;">Tanggal Dokumen</td>
+        <td style="width: 2%;">:</td>
+        <td style="width: 18%;">${printDate}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold;">Total Dosen / Tutor</td>
+        <td>:</td>
+        <td><strong>${lecturers.length} Orang</strong></td>
+        <td style="font-weight: bold;">Rata-rata Beban</td>
+        <td>:</td>
+        <td><strong>${avgWorkload} Kelas / Dosen</strong> (Total: ${totalClassesPlotted} Kelas Terplot)</td>
+      </tr>
+    </table>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 4%;">No</th>
+          <th style="width: 10%;">ID Dosen</th>
+          <th style="width: 18%;">Nama & Gelar</th>
+          <th style="width: 15%;">Bidang Kepakaran</th>
+          <th style="width: 33%;">Mata Kuliah Terplot</th>
+          <th style="width: 7%;">Terplot</th>
+          <th style="width: 6%;">Kapasitas</th>
+          <th style="width: 7%;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 400);
+    };
+  </script>
+</body>
+</html>`;
+
+    return openPrintDocument(html);
   }
 
   function parseCSV(text) {
@@ -1145,6 +1825,8 @@ export function createImportExportTools(deps) {
     exportPlottingToXLSX,
     exportPlottingTemplateToXLSX,
     exportPlottingToPDF,
+    exportSuratTugasPDF,
+    exportRekapDosenPDF,
     parseCSV,
     rowsToObjects,
     parseXLSX,

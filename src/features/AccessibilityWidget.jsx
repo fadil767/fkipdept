@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 const A11Y_STORAGE_KEY = "ut_fkip_a11y_settings";
 
 const DEFAULT_SETTINGS = {
+  theme: "light", // 'light' | 'dark' | 'auto'
   scale: "normal", // 'normal' | 'large' | 'xlarge'
   contrast: "normal", // 'normal' | 'high' | 'soft'
   dyslexic: false,
@@ -44,6 +45,9 @@ export default function AccessibilityWidget({ onNavigate, activeTab }) {
     // Contrast
     root.setAttribute("data-a11y-contrast", settings.contrast);
 
+    // Theme
+    root.setAttribute("data-theme", settings.theme);
+
     // Classes for booleans
     root.classList.toggle("a11y-dyslexic", settings.dyslexic);
     root.classList.toggle("a11y-reduced-motion", settings.reducedMotion);
@@ -53,6 +57,7 @@ export default function AccessibilityWidget({ onNavigate, activeTab }) {
 
   // Count active non-default features
   const activeCount = [
+    settings.theme !== "light",
     settings.scale !== "normal",
     settings.contrast !== "normal",
     settings.dyslexic,
@@ -250,6 +255,67 @@ export default function AccessibilityWidget({ onNavigate, activeTab }) {
 
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto space-y-5 pr-1" style={{ scrollbarWidth: "thin" }}>
+              {/* 0. Tema Tampilan (Dark Mode) */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                  Tema Tampilan
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: "light",
+                      label: "Terang",
+                      icon: (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <circle cx="12" cy="12" r="5" />
+                          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                        </svg>
+                      ),
+                      desc: "Mode Siang",
+                    },
+                    {
+                      id: "dark",
+                      label: "Gelap",
+                      icon: (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg>
+                      ),
+                      desc: "Mode Malam",
+                    },
+                    {
+                      id: "auto",
+                      label: "Otomatis",
+                      icon: (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                          <line x1="8" y1="21" x2="16" y2="21" />
+                          <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      ),
+                      desc: "Ikuti Sistem",
+                    },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => updateSetting("theme", item.id)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                        settings.theme === item.id
+                          ? "border-[#005baa] bg-blue-50/70 text-[#005baa] font-bold shadow-xs ring-2 ring-[#005baa]/20"
+                          : "border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-700 font-medium"
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="text-xs mt-1.5">{item.label}</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">
+                        {item.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 1. Ukuran Teks */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-2">
