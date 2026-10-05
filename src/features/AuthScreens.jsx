@@ -1207,6 +1207,29 @@ function clearStoredSavedCredentials() {
                   </div>
                   {networkErrorState && (
                     <div className="mt-3.5 pt-3 border-t border-rose-200/80 flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError("");
+                            setNetworkErrorState(null);
+                            if (password) {
+                              submit();
+                            }
+                          }}
+                          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 cursor-pointer"
+                        >
+                          <span>🔄 Hubungkan Ulang (Supabase Sudah Aktif)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.location.reload()}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 cursor-pointer"
+                          title="Muat ulang halaman browser"
+                        >
+                          <span>Muat Ulang Halaman</span>
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => onDemoLogin(email || "admin.fkip@ecampus.ut.ac.id")}
