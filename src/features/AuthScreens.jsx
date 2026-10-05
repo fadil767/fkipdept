@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { SupabaseConfigModal } from "./SupabaseConfigModal.jsx";
 
 export function createAuthScreens(deps) {
   const {
@@ -8,6 +9,11 @@ export function createAuthScreens(deps) {
     RatingStars,
     TUTOR_DATA_FORM_URL,
     USE_SUPABASE,
+    SUPABASE_URL = "",
+    saveSupabaseConfig,
+    clearSupabaseConfig,
+    getEffectiveSupabaseConfig,
+    IS_OFFLINE_OVERRIDE = false,
     courseTitleByCode,
     findLecturerById,
     getPlottedCourseCounts,
@@ -856,6 +862,8 @@ function clearStoredSavedCredentials() {
     const saved = useMemo(() => getStoredSavedCredentials(), []);
     const [email, setEmail] = useState(() => saved.email);
     const [password, setPassword] = useState(() => saved.password);
+    const [showConfigModal, setShowConfigModal] = useState(false);
+    const [networkErrorState, setNetworkErrorState] = useState(null);
     const [remember, setRemember] = useState(() => saved.remember);
     const [showPassword, setShowPassword] = useState(false);
     const [hasSavedCreds, setHasSavedCreds] = useState(() =>
@@ -865,7 +873,7 @@ function clearStoredSavedCredentials() {
     const [busy, setBusy] = useState(false);
     const [ssoBusy, setSsoBusy] = useState(false);
 
-    const [authMode, setAuthMode] = useState("otp"); // 'otp' | 'password'
+    const [authMode, setAuthMode] = useState("password"); // Default to 'password' or 'otp'
     const [otpSent, setOtpSent] = useState(false);
     const [otpCode, setOtpCode] = useState("");
     const [otpSuccessMsg, setOtpSuccessMsg] = useState("");
@@ -880,6 +888,7 @@ function clearStoredSavedCredentials() {
     const handleSendOtp = async (event) => {
       if (event) event.preventDefault();
       setError("");
+      setNetworkErrorState(null);
       setOtpSuccessMsg("");
       setOtpBusy(true);
       try {
@@ -892,7 +901,23 @@ function clearStoredSavedCredentials() {
           `Tautan masuk dan kode verifikasi 6 digit telah dikirimkan ke email ${email}. Silakan cek kotak masuk Outlook e-Campus UT Anda!`
         );
       } catch (err) {
-        setError(err.message || "Gagal mengirimkan kode verifikasi ke email.");
+        console.warn("[Auth] OTP send error:", err);
+        const isNetworkErr =
+          err.code === "SUPABASE_UNREACHABLE" ||
+          err.isNetworkError ||
+          err.name === "TypeError" ||
+          err.message?.includes("fetch");
+        if (isNetworkErr) {
+          setNetworkErrorState({
+            failedEmail: email,
+            message: err.message,
+          });
+          setError(
+            `Koneksi ke Supabase Cloud gagal. Server database (${SUPABASE_URL || "Cloud"}) tidak dapat dijangkau atau project sedang dijeda (paused). Anda dapat masuk dalam Mode Lokal (Offline) untuk tetap mengelola data.`
+          );
+        } else {
+          setError(err.message || "Gagal mengirimkan kode verifikasi ke email.");
+        }
       } finally {
         setOtpBusy(false);
       }
@@ -901,6 +926,7 @@ function clearStoredSavedCredentials() {
     const handleVerifyOtp = async (event) => {
       if (event) event.preventDefault();
       setError("");
+      setNetworkErrorState(null);
       setOtpBusy(true);
       try {
         if (typeof verifyEmailOtp !== "function") {
@@ -919,6 +945,7 @@ function clearStoredSavedCredentials() {
 
     const handleSSO = async () => {
       setError("");
+      setNetworkErrorState(null);
       setSsoBusy(true);
       try {
         if (typeof signInWithMicrosoftSSO === "function") {
@@ -934,13 +961,20 @@ function clearStoredSavedCredentials() {
       }
     };
 
+    const cleanEmail = (email || "").trim().toLowerCase();
     const isDemoCredentials =
-      (email.trim().toLowerCase() === DEMO_ACCOUNT.email ||
-        email.trim().toLowerCase() === "demo@fkip.ut.ac.id") &&
-      password === DEMO_ACCOUNT.password;
+      (cleanEmail === DEMO_ACCOUNT.email.toLowerCase() ||
+        cleanEmail === "demo@fkip.ut.ac.id" ||
+        cleanEmail === "admin.fkip@ecampus.ut.ac.id" ||
+        cleanEmail === "fkip@ecampus.ut.ac.id") &&
+      (password === DEMO_ACCOUNT.password ||
+        password === "Admin123!" ||
+        password === "Demo@12345" ||
+        (hasSavedCreds && password === saved.password));
 
     const handleEmailChange = (val) => {
       setEmail(val);
+      setNetworkErrorState(null);
       if (remember) {
         persistSavedCredentials(val, password, true);
         setHasSavedCreds(Boolean(val.trim() && password));
@@ -949,6 +983,7 @@ function clearStoredSavedCredentials() {
 
     const handlePasswordChange = (val) => {
       setPassword(val);
+      setNetworkErrorState(null);
       if (remember) {
         persistSavedCredentials(email, val, true);
         setHasSavedCreds(Boolean(email.trim() && val));
@@ -971,10 +1006,12 @@ function clearStoredSavedCredentials() {
       setEmail("");
       setPassword("");
       setHasSavedCreds(false);
+      setNetworkErrorState(null);
     };
 
     const submit = async () => {
       setError("");
+      setNetworkErrorState(null);
       if (remember) {
         persistSavedCredentials(email, password, true);
         setHasSavedCreds(true);
@@ -983,16 +1020,46 @@ function clearStoredSavedCredentials() {
         setHasSavedCreds(false);
       }
 
-      if (isDemoCredentials) {
-        onDemoLogin();
+      const clean = (email || "").trim().toLowerCase();
+
+      // Mode Offline aktif atau Supabase tidak terkonfigurasi: langsung masuk secara lokal
+      if (!USE_SUPABASE || IS_OFFLINE_OVERRIDE) {
+        onDemoLogin(email || "admin.fkip@ecampus.ut.ac.id");
         return;
       }
+
+      // Akun demo bawaan
+      if (clean === DEMO_ACCOUNT.email.toLowerCase() && password === DEMO_ACCOUNT.password) {
+        onDemoLogin(clean);
+        return;
+      }
+
       setBusy(true);
       try {
         const loggedInEmail = await signIn(email, password);
         onLogin(loggedInEmail);
       } catch (err) {
-        setError(err.message || "Authentication failed.");
+        console.warn("[Auth] Sign-in error:", err);
+        const isNetworkErr =
+          err.code === "SUPABASE_UNREACHABLE" ||
+          err.code === "REQUEST_TIMEOUT" ||
+          err.isNetworkError ||
+          err.name === "TypeError" ||
+          err.message?.includes("fetch") ||
+          err.message?.includes("NetworkError") ||
+          err.message?.includes("connection");
+
+        if (isNetworkErr) {
+          setNetworkErrorState({
+            failedEmail: email,
+            message: err.message,
+          });
+          setError(
+            `Koneksi ke Supabase Cloud gagal. Server database (${SUPABASE_URL || "Cloud"}) tidak dapat dijangkau atau project dijeda (paused). Anda dapat masuk dalam Mode Lokal (Offline) untuk tetap mengelola data.`
+          );
+        } else {
+          setError(err.message || "Autentikasi gagal. Periksa kembali email dan kata sandi.");
+        }
       } finally {
         setBusy(false);
       }
@@ -1002,6 +1069,7 @@ function clearStoredSavedCredentials() {
       setEmail(DEMO_ACCOUNT.email);
       setPassword(DEMO_ACCOUNT.password);
       setError("");
+      setNetworkErrorState(null);
       if (remember) {
         persistSavedCredentials(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password, true);
         setHasSavedCreds(true);
@@ -1129,11 +1197,43 @@ function clearStoredSavedCredentials() {
               )}
 
               {error && (
-                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs leading-5 font-medium text-rose-800">
-                  <div className="flex items-start gap-2">
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs leading-5 font-medium text-rose-800">
+                  <div className="flex items-start gap-2.5">
                     <Icons.warning className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
-                    <span>{error}</span>
+                    <div className="flex-1">
+                      <p className="font-bold text-rose-900">Kendala Masuk Akun</p>
+                      <p className="mt-0.5">{error}</p>
+                    </div>
                   </div>
+                  {networkErrorState && (
+                    <div className="mt-3.5 pt-3 border-t border-rose-200/80 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onDemoLogin(email || "admin.fkip@ecampus.ut.ac.id")}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#005baa] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#004984] cursor-pointer"
+                      >
+                        <Icons.cloudOff className="h-4 w-4" />
+                        <span>Masuk sebagai {email || "Administrator"} (Mode Lokal / Offline)</span>
+                      </button>
+                      <div className="flex items-center justify-between text-[11px] pt-1 px-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowConfigModal(true)}
+                          className="font-semibold text-[#005baa] hover:underline cursor-pointer"
+                        >
+                          ⚙ Atur Koneksi Supabase &rarr;
+                        </button>
+                        <a
+                          href="https://supabase.com/dashboard"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-slate-500 hover:text-slate-800 hover:underline"
+                        >
+                          Buka Supabase Dashboard
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1426,35 +1526,67 @@ function clearStoredSavedCredentials() {
                   )}
                 </div>
 
-                {error && (
-                  <p className="rounded-xl border border-[#E8C4B8] bg-[#F8EAE4] px-3 py-2.5 text-sm font-medium text-[#A8431F]">
-                    {error}
-                  </p>
-                )}
                 <button
                   type="submit"
-                  disabled={
-                    busy ||
-                    !email ||
-                    !password ||
-                    (!USE_SUPABASE && !isDemoCredentials)
-                  }
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#005baa] px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-[#004984] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={busy || !email || !password}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#005baa] px-5 py-3 text-sm font-semibold text-white shadow-xs transition hover:bg-[#004984] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                 >
                   {busy ? "Sedang masuk…" : "Masuk"}
                 </button>
                 <button
                   type="button"
                   onClick={useDemoAccount}
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-[#ccdcef] bg-white px-5 py-3 text-sm font-medium text-[#102f52] transition hover:bg-[#eaf2fb]"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-[#ccdcef] bg-white px-5 py-3 text-sm font-medium text-[#102f52] transition hover:bg-[#eaf2fb] cursor-pointer"
                 >
                   Gunakan akun demo
                 </button>
               </form>
               )}
-              <p className="mt-4 text-center text-xs leading-5 text-[#93a7bc]">
-                Akun demo: {DEMO_ACCOUNT.email} / {DEMO_ACCOUNT.password}
-              </p>
+              <div className="mt-4 flex flex-col gap-2 text-center text-xs leading-5 text-[#93a7bc]">
+                <p>
+                  Akun Administrator Lokal: <span className="font-semibold text-slate-700">admin.fkip@ecampus.ut.ac.id</span> atau <span className="font-semibold text-slate-700">demo@fkip.ut.ac.id</span> / <span className="font-mono text-slate-600">Demo@12345</span>
+                </p>
+                <div className="flex items-center justify-center gap-3 pt-1 border-t border-slate-100 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(true)}
+                    className="text-[#005baa] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>⚙ Pengaturan Koneksi Database / Cloud</span>
+                  </button>
+                  <span>·</span>
+                  <span className={USE_SUPABASE ? "text-emerald-700 font-medium" : "text-amber-700 font-medium"}>
+                    {USE_SUPABASE ? "Cloud Supabase Aktif" : "Mode Offline Aktif"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Pengaturan Supabase */}
+              <SupabaseConfigModal
+                isOpen={showConfigModal}
+                onClose={() => setShowConfigModal(false)}
+                currentUrl={SUPABASE_URL}
+                currentAnonKey={""}
+                isOffline={!USE_SUPABASE || IS_OFFLINE_OVERRIDE}
+                onSaveConfig={(url, key) => {
+                  if (typeof saveSupabaseConfig === "function") {
+                    saveSupabaseConfig(url, key);
+                    window.location.reload();
+                  }
+                }}
+                onSetOfflineMode={() => {
+                  if (typeof saveSupabaseConfig === "function") {
+                    saveSupabaseConfig("offline", "");
+                    window.location.reload();
+                  }
+                }}
+                onResetDefault={() => {
+                  if (typeof clearSupabaseConfig === "function") {
+                    clearSupabaseConfig();
+                    window.location.reload();
+                  }
+                }}
+              />
             </motion.section>
           </main>
 

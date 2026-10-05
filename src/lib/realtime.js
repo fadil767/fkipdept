@@ -8,26 +8,43 @@ const getStoredConfig = (key) => {
   }
 };
 
-const SUPABASE_URL =
+const storedUrl = getStoredConfig("ut_supabase_url");
+const storedAnonKey = getStoredConfig("ut_supabase_anon_key");
+const envUrl =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL)) ||
-  getStoredConfig("ut_supabase_url") ||
   "";
-const SUPABASE_ANON_KEY =
+const envAnonKey =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY)) ||
-  getStoredConfig("ut_supabase_anon_key") ||
   "";
 
-export const IS_SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+export const IS_OFFLINE_OVERRIDE = storedUrl === "offline";
+
+export const SUPABASE_URL = IS_OFFLINE_OVERRIDE
+  ? ""
+  : (storedUrl || envUrl || "");
+
+export const SUPABASE_ANON_KEY = IS_OFFLINE_OVERRIDE
+  ? ""
+  : (storedAnonKey || envAnonKey || "");
+
+export const IS_SUPABASE_CONFIGURED = Boolean(
+  SUPABASE_URL && SUPABASE_ANON_KEY && !IS_OFFLINE_OVERRIDE,
+);
 
 export function saveSupabaseConfig(url, key) {
   try {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("ut_supabase_url", (url || "").trim());
-      window.localStorage.setItem("ut_supabase_anon_key", (key || "").trim());
+      if (url === "offline") {
+        window.localStorage.setItem("ut_supabase_url", "offline");
+        window.localStorage.removeItem("ut_supabase_anon_key");
+      } else {
+        window.localStorage.setItem("ut_supabase_url", (url || "").trim());
+        window.localStorage.setItem("ut_supabase_anon_key", (key || "").trim());
+      }
     }
   } catch (err) {
     console.error("Failed to save supabase config:", err);

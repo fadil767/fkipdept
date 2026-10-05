@@ -45,7 +45,7 @@
     "directories": {
       "output": "release"
     },
-    "files": [
+    "files": [     
       "dist/**/*",
       "electron/**/*",
       "package.json"

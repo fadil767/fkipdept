@@ -60,6 +60,11 @@ const DEFAULT_ROLES = {
     displayName: "Admin Demo FKIP",
     createdAt: "2026-01-01T00:00:00.000Z",
   },
+  "admin.fkip@ecampus.ut.ac.id": {
+    role: "super_admin",
+    displayName: "Administrator FKIP",
+    createdAt: "2026-01-01T00:00:00.000Z",
+  },
   "fkip@ecampus.ut.ac.id": {
     role: "super_admin",
     displayName: "Program Studi FKIP UT",
@@ -68,12 +73,27 @@ const DEFAULT_ROLES = {
 };
 
 function getSupabaseConfig() {
+  const storedUrl =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("ut_supabase_url") || ""
+      : "";
+  const storedKey =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("ut_supabase_anon_key") || ""
+      : "";
+
+  if (storedUrl === "offline") {
+    return { url: "", key: "", configured: false };
+  }
+
   const url =
+    (storedUrl && storedUrl !== "offline" ? storedUrl : "") ||
     (typeof import.meta !== "undefined" &&
       import.meta.env &&
       (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL)) ||
     "";
   const key =
+    storedKey ||
     (typeof import.meta !== "undefined" &&
       import.meta.env &&
       (import.meta.env.VITE_SUPABASE_ANON_KEY ||
@@ -124,8 +144,12 @@ export async function fetchUserRole(email = "") {
   if (!email) return ROLES.VIEWER;
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Demo user is always super_admin
-  if (normalizedEmail === "demo@fkip.ut.ac.id") {
+  // Admin and demo users are always super_admin locally
+  if (
+    normalizedEmail === "demo@fkip.ut.ac.id" ||
+    normalizedEmail === "admin.fkip@ecampus.ut.ac.id" ||
+    normalizedEmail === "fkip@ecampus.ut.ac.id"
+  ) {
     return ROLES.SUPER_ADMIN;
   }
 
@@ -282,7 +306,8 @@ export async function deleteUserRole(email) {
   // Prevent deleting default demo or primary admin
   if (
     normalizedEmail === "demo@fkip.ut.ac.id" ||
-    normalizedEmail === "fkip@ecampus.ut.ac.id"
+    normalizedEmail === "fkip@ecampus.ut.ac.id" ||
+    normalizedEmail === "admin.fkip@ecampus.ut.ac.id"
   ) {
     throw new Error("Akun administrator utama tidak dapat dihapus.");
   }

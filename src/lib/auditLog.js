@@ -16,12 +16,27 @@ let flushTimer = null;
  * Get Supabase config for direct REST calls
  */
 function getSupabaseConfig() {
+  const storedUrl =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("ut_supabase_url") || ""
+      : "";
+  const storedKey =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("ut_supabase_anon_key") || ""
+      : "";
+
+  if (storedUrl === "offline") {
+    return { url: "", key: "", configured: false };
+  }
+
   const url =
+    (storedUrl && storedUrl !== "offline" ? storedUrl : "") ||
     (typeof import.meta !== "undefined" &&
       import.meta.env &&
       (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL)) ||
     "";
   const key =
+    storedKey ||
     (typeof import.meta !== "undefined" &&
       import.meta.env &&
       (import.meta.env.VITE_SUPABASE_ANON_KEY ||

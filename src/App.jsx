@@ -26,6 +26,11 @@ import {
 } from "./lib/autoPilot.js";
 import {
   USE_SUPABASE,
+  SUPABASE_URL,
+  saveSupabaseConfig,
+  clearSupabaseConfig,
+  getEffectiveSupabaseConfig,
+  IS_OFFLINE_OVERRIDE,
   PENDING_LECTURER_LABELS_STORAGE_KEY,
   applyTableChanges,
   buildTableChanges,
@@ -2501,6 +2506,11 @@ const { LandingScreen, PublicLookupScreen, LoginScreen } = createAuthScreens({
   RatingStars,
   TUTOR_DATA_FORM_URL,
   USE_SUPABASE,
+  SUPABASE_URL,
+  saveSupabaseConfig,
+  clearSupabaseConfig,
+  getEffectiveSupabaseConfig,
+  IS_OFFLINE_OVERRIDE,
   courseTitleByCode,
   findLecturerById,
   getPlottedCourseCounts,
@@ -3519,6 +3529,42 @@ export default function App() {
               : "All changes saved",
         );
       } catch (error) {
+        if (
+          error.isNetworkError ||
+          error.code === "SUPABASE_UNREACHABLE" ||
+          error.message?.includes("fetch") ||
+          error.message?.includes("Failed to fetch")
+        ) {
+          console.warn("[App] Supabase offline, activating local snapshot fallback:", error);
+          const demoSnapshot = cloneDemoSnapshot();
+          const deletedIds = getStoredDeletedLecturerIds();
+          const storedCustomLecturers = getStoredCustomLecturers();
+          const storedCustomPlottings = getStoredCustomPlottings();
+          let baseLecturers = demoSnapshot.lecturers.filter((l) => !deletedIds.has(l.id));
+          if (storedCustomLecturers !== null) {
+            baseLecturers = storedCustomLecturers.filter((l) => !deletedIds.has(l.id));
+          }
+          let basePlottings = demoSnapshot.termPlottings.filter((tp) => !deletedIds.has(tp.lecturer_id));
+          if (storedCustomPlottings !== null) {
+            basePlottings = storedCustomPlottings.filter((tp) => !deletedIds.has(tp.lecturer_id));
+          }
+          applyDatabaseSnapshot({
+            ...demoSnapshot,
+            lecturers: baseLecturers,
+            termPlottings: basePlottings,
+          });
+          setCourseClassPlans(cloneDemoCourseClassPlans());
+          setSelectedTermCode("DEMO-2026-1");
+          setHydrated(true);
+          setSyncState("saved");
+          setDbStatus("Server Supabase offline. Berjalan dalam Mode Cadangan Lokal.");
+          setRealtimeToast({
+            message: "Server Supabase tidak dapat dijangkau. Beralih ke data lokal sementara.",
+            type: "warning",
+          });
+          return;
+        }
+
         setHydrated(false);
         setSyncState("error");
         if (error.status === 401 || error.status === 403) {
@@ -4107,16 +4153,28 @@ export default function App() {
     };
   }, []);
 
-  const handleDemoLogin = () => {
+  const handleDemoLogin = (customEmail) => {
     signOut();
     try {
       localStorage.setItem("ut_is_demo_session", "true");
     } catch (err) {
       void err;
     }
+    const cleanEmail =
+      typeof customEmail === "string" && customEmail.trim()
+        ? customEmail.trim()
+        : DEMO_ACCOUNT.email;
+    try {
+      localStorage.setItem("ut_user_email", cleanEmail);
+    } catch (err) {
+      void err;
+    }
     saveRecentAccount({
-      email: DEMO_ACCOUNT.email,
-      name: "Admin Demo",
+      email: cleanEmail,
+      name:
+        cleanEmail === DEMO_ACCOUNT.email
+          ? "Admin Demo"
+          : "Administrator FKIP (Lokal)",
       role: "Administrator Program Studi (Lokal)",
       type: "demo",
     });
@@ -4127,17 +4185,21 @@ export default function App() {
     setActive("dashboard");
     setHydrated(false);
     setSession({
-      userEmail: DEMO_ACCOUNT.email,
+      userEmail: cleanEmail,
       entryMode: "admin",
       isDemo: true,
     });
-    logAction(DEMO_ACCOUNT.email, "login", "auth", DEMO_ACCOUNT.email, "Admin Demo", { type: "demo" });
+    logAction(cleanEmail, "login", "auth", cleanEmail, "Admin", { type: "local" });
   };
 
-  const handleSwitchToDemo = () => {
-    handleDemoLogin();
+  const handleSwitchToDemo = (customEmail) => {
+    const targetEmail =
+      typeof customEmail === "string" && customEmail.trim()
+        ? customEmail.trim()
+        : DEMO_ACCOUNT.email;
+    handleDemoLogin(targetEmail);
     setRealtimeToast({
-      message: "Berhasil beralih ke Akun Demo (demo@fkip.ut.ac.id)",
+      message: `Berhasil beralih ke Mode Lokal (${targetEmail})`,
       type: "info",
     });
   };
